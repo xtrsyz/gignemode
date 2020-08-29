@@ -470,7 +470,7 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 		return 0
 	end
 
-	self.removeWeapon = function(weaponName)
+	self.removeWeapon = function(weaponName, ammo)
 		local weaponLabel
 
 		for k,v in ipairs(self.loadout) do
@@ -487,7 +487,7 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 		end
 
 		if weaponLabel then
-			self.triggerEvent('esx:removeWeapon', weaponName)
+			self.triggerEvent('esx:removeWeapon', weaponName, ammo)
 			self.triggerEvent('esx:removeInventoryItem', weaponLabel, false, true)
 		end
 	end

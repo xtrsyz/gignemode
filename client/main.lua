@@ -218,10 +218,16 @@ AddEventHandler('esx:setWeaponTint', function(weaponName, weaponTintIndex)
 end)
 
 RegisterNetEvent('esx:removeWeapon')
-AddEventHandler('esx:removeWeapon', function(weaponName)
+AddEventHandler('esx:removeWeapon', function(weaponName, ammo)
 	local playerPed = PlayerPedId()
 	RemoveWeaponFromPed(playerPed, weaponName)
-	SetPedAmmo(playerPed, weaponName, 0) -- remove leftover ammo
+	if ammo then
+		local pedAmmo = GetAmmoInPedWeapon(playerPed, weaponName)
+		local finalAmmo = math.floor(pedAmmo - ammo)
+		SetPedAmmo(playerPed, weaponName, finalAmmo)
+	else
+		SetPedAmmo(playerPed, weaponName, 0) -- remove leftover ammo
+	end
 end)
 
 RegisterNetEvent('esx:removeWeaponComponent')
