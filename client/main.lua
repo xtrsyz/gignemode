@@ -1,4 +1,4 @@
-local isLoadoutLoaded, isPaused, isDead, isFirstSpawn, pickups = false, false, false, true, {}
+local isPaused, isDead, pickups = false, false, {}
 
 CreateThread(function()
 	while true do
@@ -51,13 +51,14 @@ AddEventHandler('esx:playerLoaded', function(playerData)
 		z = playerData.coords.z,
 		heading = playerData.coords.heading,
 		model = Config.DefaultPlayerModel,
-		skipFade = false
+		skipFade = true
 	}, function()
-		isLoadoutLoaded = true
 		TriggerServerEvent('esx:onPlayerSpawn')
 		TriggerEvent('esx:onPlayerSpawn')
 		TriggerEvent('esx:restoreLoadout')
+		StartServerSyncLoops()
 	end)
+	TriggerEvent('esx:loadingScreenOff')
 end)
 
 RegisterNetEvent('es:activateMoney')
@@ -70,7 +71,6 @@ AddEventHandler('esx:setMaxWeight', function(newMaxWeight) ESX.PlayerData.maxWei
 
 AddEventHandler('esx:onPlayerSpawn', function() isDead = false end)
 AddEventHandler('esx:onPlayerDeath', function() isDead = true end)
-AddEventHandler('skinchanger:loadDefaultModel', function() isLoadoutLoaded = false end)
 
 AddEventHandler('skinchanger:modelLoaded', function()
 	while not ESX.PlayerLoaded do
@@ -83,7 +83,6 @@ end)
 AddEventHandler('esx:restoreLoadout', function()
 	local playerPed = PlayerPedId()
 	local ammoTypes = {}
-
 	RemoveAllPedWeapons(playerPed, true)
 
 	for k,v in ipairs(ESX.PlayerData.loadout) do
@@ -96,7 +95,6 @@ AddEventHandler('esx:restoreLoadout', function()
 
 		for k2,v2 in ipairs(v.components) do
 			local componentHash = ESX.GetWeaponComponent(weaponName, v2).hash
-
 			GiveWeaponComponentToPed(playerPed, weaponName, componentHash)
 		end
 
@@ -105,8 +103,6 @@ AddEventHandler('esx:restoreLoadout', function()
 			ammoTypes[ammoType] = true
 		end
 	end
-
-	isLoadoutLoaded = true
 end)
 
 RegisterNetEvent('esx:setAccountMoney')
@@ -386,6 +382,10 @@ if Config.EnableHud then
 			end
 		end
 	end)
+
+	AddEventHandler('esx:loadingScreenOff', function()
+		ESX.UI.HUD.SetDisplay(1.0)
+	end)
 end
 
 -- Keep track of ammo usage
@@ -562,3 +562,50 @@ CreateThread(function()
 		end
 	end
 end)
+
+function StartServerSyncLoops()
+	-- keep track of ammo
+	Citizen.CreateThread(function()
+		while true do
+			Wait(0)
+
+			if isDead then
+				Wait(500)
+			else
+				local playerPed = PlayerPedId()
+
+				if IsPedShooting(playerPed) then
+					local _,weaponHash = GetCurrentPedWeapon(playerPed, true)
+					local weapon = ESX.GetWeaponFromHash(weaponHash)
+
+					if weapon then
+						local ammoCount = GetAmmoInPedWeapon(playerPed, weaponHash)
+						TriggerServerEvent('esx:updateWeaponAmmo', weapon.name, ammoCount)
+					end
+				end
+			end
+		end
+	end)
+
+	-- sync current player coords with server
+	Citizen.CreateThread(function()
+		local previousCoords = vector3(ESX.PlayerData.coords.x, ESX.PlayerData.coords.y, ESX.PlayerData.coords.z)
+
+		while true do
+			Wait(1000)
+			local playerPed = PlayerPedId()
+
+			if DoesEntityExist(playerPed) then
+				local playerCoords = GetEntityCoords(playerPed)
+				local distance = #(playerCoords - previousCoords)
+
+				if distance > 1 then
+					previousCoords = playerCoords
+					local playerHeading = ESX.Math.Round(GetEntityHeading(playerPed), 1)
+					local formattedCoords = {x = ESX.Math.Round(playerCoords.x, 1), y = ESX.Math.Round(playerCoords.y, 1), z = ESX.Math.Round(playerCoords.z, 1), heading = playerHeading}
+					TriggerServerEvent('esx:updateCoords', formattedCoords)
+				end
+			end
+		end
+	end)
+end
