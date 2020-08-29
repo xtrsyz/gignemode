@@ -437,111 +437,41 @@ ESX.Game.GetObjects = function()
 	return objects
 end
 
-ESX.Game.GetClosestObject = function(filter, coords)
-	local objects = ESX.Game.GetObjects()
-	local closestDistance, closestObject = -1, -1
-	local filter, coords = filter, coords
-
-	if type(filter) == 'string' then
-		if filter ~= '' then
-			filter = {filter}
-		end
+ESX.Game.GetHashKey = function(modelName)
+	if type(modelName) ~= "number" then
+		modelName = GetHashKey(modelName)
 	end
-
-	if coords then
-		coords = vector3(coords.x, coords.y, coords.z)
-	else
-		local playerPed = PlayerPedId()
-		coords = GetEntityCoords(playerPed)
-	end
-
-	for i=1, #objects, 1 do
-		local foundObject = false
-
-		if filter == nil or (type(filter) == 'table' and #filter == 0) then
-			foundObject = true
-		else
-			local objectModel = GetEntityModel(objects[i])
-
-			for j=1, #filter, 1 do
-				if objectModel == GetHashKey(filter[j]) then
-					foundObject = true
-					break
-				end
-			end
-		end
-
-		if foundObject then
-			local objectCoords = GetEntityCoords(objects[i])
-			local distance = #(objectCoords - coords)
-
-			if closestDistance == -1 or closestDistance > distance then
-				closestObject = objects[i]
-				closestDistance = distance
-			end
-		end
-	end
-
-	return closestObject, closestDistance
+	return modelName
 end
 
-ESX.Game.GetPlayers = function()
-	local players = {}
+ESX.Game.GetPlayers = function(onlyOtherPlayers, returnKeyValue, returnPeds)
+	local players, myPlayer = {}, PlayerId()
 
-	for _,player in ipairs(GetActivePlayers()) do
+	for k,player in ipairs(GetActivePlayers()) do
 		local ped = GetPlayerPed(player)
 
-		if DoesEntityExist(ped) then
-			table.insert(players, player)
+		if DoesEntityExist(ped) and ((onlyOtherPlayers and player ~= myPlayer) or not onlyOtherPlayers) then
+			if returnKeyValue then
+				players[player] = ped
+			else
+				table.insert(players, returnPeds and ped or player)
+			end
 		end
 	end
 
 	return players
 end
 
-ESX.Game.GetClosestPlayer = function(coords)
-	local players, closestDistance, closestPlayer = ESX.Game.GetPlayers(), -1, -1
-	local coords, usePlayerPed = coords, false
-	local playerPed, playerId = PlayerPedId(), PlayerId()
+ESX.Game.GetPeds = function(onlyOtherPeds)
+	local peds, myPed = {}, PlayerPedId()
 
-	if coords then
-		coords = vector3(coords.x, coords.y, coords.z)
-	else
-		usePlayerPed = true
-		coords = GetEntityCoords(playerPed)
-	end
-
-	for i=1, #players, 1 do
-		local target = GetPlayerPed(players[i])
-
-		if not usePlayerPed or (usePlayerPed and players[i] ~= playerId) then
-			local targetCoords = GetEntityCoords(target)
-			local distance = #(coords - targetCoords)
-
-			if closestDistance == -1 or closestDistance > distance then
-				closestPlayer = players[i]
-				closestDistance = distance
-			end
+	for ped in EnumeratePeds() do
+		if ((onlyOtherPeds and ped ~= myPed) or not onlyOtherPeds) then
+			table.insert(peds, ped)
 		end
 	end
 
-	return closestPlayer, closestDistance
-end
-
-ESX.Game.GetPlayersInArea = function(coords, area)
-	local players, playersInArea = ESX.Game.GetPlayers(), {}
-	coords = vector3(coords.x, coords.y, coords.z)
-
-	for i=1, #players, 1 do
-		local target = GetPlayerPed(players[i])
-		local targetCoords = GetEntityCoords(target)
-
-		if #(coords - targetCoords) <= area then
-			table.insert(playersInArea, players[i])
-		end
-	end
-
-	return playersInArea
+	return peds
 end
 
 ESX.Game.GetVehicles = function()
@@ -554,9 +484,26 @@ ESX.Game.GetVehicles = function()
 	return vehicles
 end
 
-ESX.Game.GetClosestVehicle = function(coords)
-	local vehicles = ESX.Game.GetVehicles()
-	local closestDistance, closestVehicle, coords = -1, -1, coords
+ESX.Game.GetClosestEntity = function(entities, isPlayerEntities, coords, modelFilter)
+	local closestEntity, closestEntityDistance, filteredEntities = -1, -1, nil
+
+	if coords and (type(coords) == 'number' or not coords.x) then
+		local _modelFilter = modelFilter
+		modelFilter = coords
+		coords = _modelFilter
+	end
+
+	if modelFilter then
+		local filter = {}
+		if type(modelFilter) == 'table' then
+			for _,model in pairs(modelFilter) do
+				filter[ESX.Game.GetHashKey(model)] = model
+			end
+		elseif modelFilter ~= '' then
+			filter[ESX.Game.GetHashKey(modelFilter)] = modelFilter
+		end
+		modelFilter = filter
+	end
 
 	if coords then
 		coords = vector3(coords.x, coords.y, coords.z)
@@ -565,32 +512,25 @@ ESX.Game.GetClosestVehicle = function(coords)
 		coords = GetEntityCoords(playerPed)
 	end
 
-	for i=1, #vehicles, 1 do
-		local vehicleCoords = GetEntityCoords(vehicles[i])
-		local distance = #(coords - vehicleCoords)
+	if modelFilter then
+		filteredEntities = {}
 
-		if closestDistance == -1 or closestDistance > distance then
-			closestVehicle, closestDistance = vehicles[i], distance
+		for k,entity in pairs(entities) do
+			if modelFilter[GetEntityModel(entity)] then
+				table.insert(filteredEntities, entity)
+			end
 		end
 	end
 
-	return closestVehicle, closestDistance
-end
+	for k,entity in pairs(filteredEntities or entities) do
+		local distance = #(coords - GetEntityCoords(entity))
 
-ESX.Game.GetVehiclesInArea = function(coords, area)
-	local vehicles       = ESX.Game.GetVehicles()
-	local vehiclesInArea = {}
-
-	for i=1, #vehicles, 1 do
-		local vehicleCoords = GetEntityCoords(vehicles[i])
-		local distance      = GetDistanceBetweenCoords(vehicleCoords, coords.x, coords.y, coords.z, true)
-
-		if distance <= area then
-			table.insert(vehiclesInArea, vehicles[i])
+		if closestEntityDistance == -1 or distance < closestEntityDistance then
+			closestEntity, closestEntityDistance = isPlayerEntities and k or entity, distance
 		end
 	end
 
-	return vehiclesInArea
+	return closestEntity, closestEntityDistance
 end
 
 ESX.Game.GetVehicleInDirection = function()
@@ -607,51 +547,13 @@ ESX.Game.GetVehicleInDirection = function()
 	return nil
 end
 
-ESX.Game.IsSpawnPointClear = function(coords, radius)
-	local vehicles = ESX.Game.GetVehiclesInArea(coords, radius)
-
-	return #vehicles == 0
-end
-
-ESX.Game.GetPeds = function(ignoreList)
-	local ignoreList = ignoreList or {}
-	local peds       = {}
-
-	for ped in EnumeratePeds() do
-		local found = false
-
-		for j=1, #ignoreList, 1 do
-			if ignoreList[j] == ped then
-				found = true
-			end
-		end
-
-		if not found then
-			table.insert(peds, ped)
-		end
-	end
-
-	return peds
-end
-
-ESX.Game.GetClosestPed = function(coords, ignoreList)
-	local ignoreList      = ignoreList or {}
-	local peds            = ESX.Game.GetPeds(ignoreList)
-	local closestDistance = -1
-	local closestPed      = -1
-
-	for i=1, #peds, 1 do
-		local pedCoords = GetEntityCoords(peds[i])
-		local distance  = GetDistanceBetweenCoords(pedCoords, coords.x, coords.y, coords.z, true)
-
-		if closestDistance == -1 or closestDistance > distance then
-			closestPed      = peds[i]
-			closestDistance = distance
-		end
-	end
-
-	return closestPed, closestDistance
-end
+ESX.Game.GetClosestObject = function(coords, modelFilter) return ESX.Game.GetClosestEntity(ESX.Game.GetObjects(), false, coords, modelFilter) end
+ESX.Game.GetClosestPed = function(coords, modelFilter) return ESX.Game.GetClosestEntity(ESX.Game.GetPeds(true), false, coords, modelFilter) end
+ESX.Game.GetClosestPlayer = function(coords) return ESX.Game.GetClosestEntity(ESX.Game.GetPlayers(true, true), true, coords, nil) end
+ESX.Game.GetClosestVehicle = function(coords, modelFilter) return ESX.Game.GetClosestEntity(ESX.Game.GetVehicles(), false, coords, modelFilter) end
+ESX.Game.GetPlayersInArea = function(coords, maxDistance) return EnumerateEntitiesWithinDistance(ESX.Game.GetPlayers(true, true), true, coords, maxDistance) end
+ESX.Game.GetVehiclesInArea = function(coords, maxDistance) return EnumerateEntitiesWithinDistance(ESX.Game.GetVehicles(), false, coords, maxDistance) end
+ESX.Game.IsSpawnPointClear = function(coords, maxDistance) return #ESX.Game.GetVehiclesInArea(coords, maxDistance) == 0 end
 
 ESX.Game.GetVehicleProperties = function(vehicle)
 	if DoesEntityExist(vehicle) then
