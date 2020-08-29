@@ -251,16 +251,12 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 		-- if item exists -> run
 		if(item)then
 			-- Create new item
-			newItem = {
-				name = name,
-				count = 0,
-				label = item.label,
-				weight = item.weight,
-				limit = item.limit,
-				usable = ESX.UsableItemsCallbacks[name] ~= nil,
-				rare = item.rare,
-				canRemove = item.canRemove
-			}
+			newItem = {}
+			for key,val in pairs(item) do
+				newItem[key] = val
+			end
+			newItem.count = 0
+			newItem.usable = ESX.UsableItemsCallbacks[name] ~= nil
 
 			-- Insert into players inventory
 			table.insert(self.inventory, newItem)

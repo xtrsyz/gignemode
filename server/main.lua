@@ -159,16 +159,13 @@ function loadESXPlayer(identifier, playerId)
 				local count = foundItems[name] or 0
 				if count > 0 then
 					userData.weight = userData.weight + (item.weight * count)
-					table.insert(userData.inventory, {
-						name = name,
-						count = count,
-						label = item.label,
-						weight = item.weight,
-						limit = item.limit,
-						usable = ESX.UsableItemsCallbacks[name] ~= nil,
-						rare = item.rare,
-						canRemove = item.canRemove
-					})
+					local newItem = {}
+					for key,val in pairs(item) do
+						newItem[key] = val
+					end
+					newItem.count = count
+					newItem.usable = ESX.UsableItemsCallbacks[name] ~= nil
+					table.insert(userData.inventory, newItem)
 				end
 			end
 

@@ -103,13 +103,14 @@ MySQL.ready(function()
 		if pcall(databaseCheckFunction) then
 			MySQL.Async.fetchAll('SELECT * FROM items', {}, function(result)
 				for k,v in ipairs(result) do
-					ESX.Items[v.name] = {
-						label = v.label,
-						weight = v.weight,
-						rare = v.rare,
-						limit = v.limit,
-						canRemove = v.can_remove
-					}
+					ESX.Items[v.name] = v
+					if not ESX.Items[v.name].canRemove then
+						if v.can_remove ~= nil then
+							ESX.Items[v.name].canRemove = v.can_remove
+						else
+							ESX.Items[v.name].canRemove = true
+						end
+					end
 				end
 			end)
 		

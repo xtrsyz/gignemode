@@ -138,16 +138,7 @@ AddEventHandler('esx:addInventoryItem', function(item, count, showNotification, 
 	-- If the item wasn't found in your inventory -> run
 	if(found == false and newItem --[[Just a check if there is a newItem]])then
 		-- Add item newItem to the players inventory
-		ESX.PlayerData.inventory[#ESX.PlayerData.inventory + 1] = {
-			name = newItem.name,
-			count = count,
-			label = newItem.label,
-			weight = newItem.weight,
-			limit = newItem.limit,
-			usable = newItem.usable,
-			rare = newItem.rare,
-			canRemove = newItem.canRemove
-		}
+		ESX.PlayerData.inventory[#ESX.PlayerData.inventory + 1] = newItem
 
 		-- Show a notification that a new item was added
 		ESX.UI.ShowInventoryItemNotification(true, newItem.label, count)
