@@ -350,6 +350,30 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 		return false
 	end
 
+	-- xPlayer.canSwapItems({bread=2,meat=1}, {burger=1})
+	self.canSwapItems = function(oldItems, newItems)
+		local weightWithoutFirstItem, weightChangeItems = self.weight, 0
+		for name,count in pairs(newItems) do
+			local item = self.getInventoryItem(name)
+			if ESX.Items[name].limit and ESX.Items[name].limit ~= -1 and item.count + count > ESX.Items[name].limit then
+				return false
+			end
+			weightChangeItems = weightChangeItems + (item.weight * count)
+		end
+
+		for name,count in pairs(oldItems) do
+			if item.count >= count then
+				local item = self.getInventoryItem(name)
+				weightWithoutFirstItem = weightWithoutFirstItem - (item.weight * count)
+			else
+				return false
+			end
+		end
+
+		local weightWithTestItem = ESX.Math.Round(weightWithoutFirstItem + weightChangeItems)
+		return weightWithTestItem <= self.maxWeight
+	end
+
 	self.setMaxWeight = function(newWeight)
 		self.maxWeight = newWeight
 		self.triggerEvent('esx:setMaxWeight', self.maxWeight)
