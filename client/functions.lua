@@ -19,6 +19,19 @@ ESX.Scaleform = {}
 ESX.Scaleform.Utils = {}
 
 ESX.Streaming = {}
+ESX.Functions = {}
+
+ESX.RegisterFunction = function(name, cb)
+	ESX.Functions[name] = cb
+end
+
+ESX.Function = function(name, ...)
+	if ESX.Functions[name] then
+		ESX.Functions[name](...)
+	else
+		print(('^1[ExtendedMode]^7 Function "%s" does not exist.'):format(name))
+	end
+end
 
 -- Add a seperate table for ExtendedMode functions, but using metatables to limit feature usage on the ESX table
 -- This is to provide backward compatablity with ESX but not add new features to the old ESX tables.
