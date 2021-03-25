@@ -76,31 +76,43 @@ ESX.SetPlayerData = function(key, val)
 end
 
 ESX.ShowNotification = function(msg, flash, saveToBrief, hudColorIndex)
-	if saveToBrief == nil then saveToBrief = true end
-	AddTextEntry('esxNotification', msg)
-	BeginTextCommandThefeedPost('esxNotification')
-	if hudColorIndex then ThefeedNextPostBackgroundColor(hudColorIndex) end
-	EndTextCommandThefeedPostTicker(flash or false, saveToBrief)
+	if Config.ShowNotification then
+		if saveToBrief == nil then saveToBrief = true end
+		AddTextEntry('esxNotification', msg)
+		BeginTextCommandThefeedPost('esxNotification')
+		if hudColorIndex then ThefeedNextPostBackgroundColor(hudColorIndex) end
+		EndTextCommandThefeedPostTicker(flash or false, saveToBrief)
+	else
+		TriggerEvent('showNotification', msg, flash, saveToBrief, hudColorIndex)
+	end
 end
 
 ESX.ShowAdvancedNotification = function(sender, subject, msg, textureDict, iconType, flash, saveToBrief, hudColorIndex)
-	if saveToBrief == nil then saveToBrief = true end
-	AddTextEntry('esxAdvancedNotification', msg)
-	BeginTextCommandThefeedPost('esxAdvancedNotification')
-	if hudColorIndex then ThefeedNextPostBackgroundColor(hudColorIndex) end
-	EndTextCommandThefeedPostMessagetext(textureDict, textureDict, false, iconType, sender, subject)
-	EndTextCommandThefeedPostTicker(flash or false, saveToBrief)
+	if Config.ShowAdvancedNotification then
+		if saveToBrief == nil then saveToBrief = true end
+		AddTextEntry('esxAdvancedNotification', msg)
+		BeginTextCommandThefeedPost('esxAdvancedNotification')
+		if hudColorIndex then ThefeedNextPostBackgroundColor(hudColorIndex) end
+		EndTextCommandThefeedPostMessagetext(textureDict, textureDict, false, iconType, sender, subject)
+		EndTextCommandThefeedPostTicker(flash or false, saveToBrief)
+	else
+		TriggerEvent('showAdvancedNotification', sender, subject, msg, textureDict, iconType, flash, saveToBrief, hudColorIndex)
+	end
 end
 
 ESX.ShowHelpNotification = function(msg, thisFrame, beep, duration)
-	AddTextEntry('esxHelpNotification', msg)
+	if Config.ShowHelpNotification then
+		AddTextEntry('esxHelpNotification', msg)
 
-	if thisFrame then
-		DisplayHelpTextThisFrame('esxHelpNotification', false)
+		if thisFrame then
+			DisplayHelpTextThisFrame('esxHelpNotification', false)
+		else
+			if beep == nil then beep = true end
+			BeginTextCommandDisplayHelp('esxHelpNotification')
+			EndTextCommandDisplayHelp(0, false, beep, duration or -1)
+		end
 	else
-		if beep == nil then beep = true end
-		BeginTextCommandDisplayHelp('esxHelpNotification')
-		EndTextCommandDisplayHelp(0, false, beep, duration or -1)
+		TriggerEvent('showHelpNotification', msg, thisFrame, beep, duration)
 	end
 end
 
@@ -416,6 +428,8 @@ ESX.Game.SpawnVehicle = function(model, coords, heading, cb, networked)
 		SetVehicleNeedsToBeHotwired(vehicle, false)
 		SetModelAsNoLongerNeeded(model)
 		SetVehRadioStation(vehicle, 'OFF')
+
+		DecorSetInt(vehicle,"GamemodeCar",955)
 
 		RequestCollisionAtCoord(vector.xyz)
 		while not HasCollisionLoadedAroundEntity(vehicle) do

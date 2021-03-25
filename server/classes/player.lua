@@ -166,7 +166,7 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 			local minimalLoadout = {}
 
 			for k,v in ipairs(self.loadout) do
-				minimalLoadout[v.name] = {ammo = v.ammo}
+				minimalLoadout[v.name] = {ammo = v.ammo, quality = v.quality, serial = v.serial}
 				if v.tintIndex > 0 then minimalLoadout[v.name].tintIndex = v.tintIndex end
 
 				if #v.components > 0 then
@@ -263,6 +263,8 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 				newItem[key] = val
 			end
 			newItem.count = 0
+			newItem.batch = {}
+			newItem.batchCount = 0
 			newItem.usable = ESX.UsableItemsCallbacks[name] ~= nil
 
 			-- Insert into players inventory
@@ -275,20 +277,35 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 		return
 	end
 
-	self.addInventoryItem = function(name, count)
+	self.addInventoryItem = function(name, count, itemBatch)
 		local item = self.getInventoryItem(name)
 
 		if item then
 			count = ESX.Math.Round(count)
 			item.count = item.count + count
+			if itemBatch then
+				if not itemBatch.batch then
+					itemBatch.batch = ESX.GetBatch()
+				end
+				if item.batch[itemBatch.batch] then
+					item.batch[itemBatch.batch].count = item.batch[itemBatch.batch].count + count
+				else
+					if itemBatch.lifetime and not itemBatch.expiredtime then
+						itemBatch.expiredtime = os.time() + itemBatch.lifetime
+					end
+					item.batch[itemBatch.batch] = {count = count, info = itemBatch}
+				end
+				item.batchCount = item.batchCount + count
+			end
 			self.weight = self.weight + (item.weight * count)
 
-			TriggerEvent('esx:onAddInventoryItem', self.source, item.name, item.count)
+			TriggerEvent('esx:onAddInventoryItem', self.source, item.name, item.count, item.batch)
 			self.triggerEvent('esx:addInventoryItem', item.name, item.count, false, item)
+			return true
 		end
 	end
 
-	self.removeInventoryItem = function(name, count)
+	self.removeInventoryItem = function(name, count, batchNumber)
 		local item = self.getInventoryItem(name)
 
 		if item then
@@ -297,10 +314,27 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 
 			if newCount >= 0 then
 				item.count = newCount
+				batchNumber = not batchNumber and self.get('removeBatch') or batchNumber
+				if batchNumber and item.batch[batchNumber] then
+					local batchCount = item.batch[batchNumber].count - count
+					if batchCount > 0 then
+						item.batch[batchNumber].count = batchCount
+					else
+						item.batch[batchNumber] = nil
+					end
+					item.batchCount = item.batchCount - count
+				end
+
+				if newCount == 0 then
+					item.batch = {}
+					item.batchCount = 0
+				end
+
 				self.weight = self.weight - (item.weight * count)
 
-				TriggerEvent('esx:onRemoveInventoryItem', self.source, item.name, item.count)
-				self.triggerEvent('esx:removeInventoryItem', item.name, item.count)
+				TriggerEvent('esx:onRemoveInventoryItem', self.source, item.name, item.count, batchNumber)
+				self.triggerEvent('esx:removeInventoryItem', item.name, item.count, false, item.batch)
+				return true
 			end
 		end
 	end
@@ -436,13 +470,18 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 		end
 	end
 
-	self.addWeapon = function(weaponName, ammo)
+	self.addWeapon = function(weaponName, ammo, itemInfo)
 		if not self.hasWeapon(weaponName) then
 			local weaponLabel = ESX.GetWeaponLabel(weaponName)
+			local quality = itemInfo and itemInfo.quality or 100
+			local serial = itemInfo and itemInfo.serial or ESX.RandomString(8)
 
 			table.insert(self.loadout, {
 				name = weaponName,
 				ammo = ammo,
+				quality = quality,
+				batch = serial,
+				serial = serial,
 				label = weaponLabel,
 				components = {},
 				tintIndex = 0
@@ -450,6 +489,8 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 
 			self.triggerEvent('esx:addWeapon', weaponName, ammo)
 			self.triggerEvent('esx:addInventoryItem', weaponLabel, false, true)
+		else
+			self.addInventoryItem(weaponName, ammo, itemInfo)
 		end
 	end
 
@@ -485,6 +526,14 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 			if ammoCount < weapon.ammo then
 				weapon.ammo = ammoCount
 			end
+		end
+	end
+
+	self.updateWeaponQuality = function(weaponName, quality)
+		local loadoutNum, weapon = self.getWeapon(weaponName)
+
+		if weapon then
+			weapon.quality = quality
 		end
 	end
 

@@ -17,9 +17,14 @@ Config.EnableHud            = false -- enable the default hud? Display current j
 Config.EnablePvP            = true -- enable pvp?
 Config.MaxWeight            = 24000   -- the max inventory weight without backpack(this is in grams, not kg!)
 
-Config.PaycheckInterval     = 60 * 60000 -- how often to recieve pay checks in milliseconds
+Config.PaycheckInterval     = 8 * 60000 -- how often to recieve pay checks in milliseconds
+Config.SaveDataInterval     = 60000 -- how often to recieve pay checks in milliseconds
 
 Config.EnableDebug          = false
+Config.HidePlayerName		= false
+Config.ShowNotification		= true
+Config.ShowAdvancedNotification		= true
+Config.ShowHelpNotification		= true
 Config.PrimaryIdentifier	= "steam" -- Options: steam, license (social club), fivem, discord, xbl, live (default steam, recommended: fivem) this SHOULD function with most older scripts too!
 
 -- The default player model you will use if no other scripts control your player model
@@ -29,3 +34,4 @@ Config.PrimaryIdentifier	= "steam" -- Options: steam, license (social club), fiv
 Config.DefaultPlayerModel	= `mp_m_freemode_01` 
 
 Config.DefaultPickupModel = `prop_money_bag_01`
+Config.Resources = {'sessionmanager', 'spawnmanager', 'webpack', 'yarn', 'bob74_ipl', 'async', 'mysql-async', 'screenshot-basic', 'vMenu', 'chat', 'monitor', 'rconlog'}

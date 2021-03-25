@@ -157,11 +157,14 @@ AddEventHandler('esx:addInventoryItem', function(item, count, showNotification, 
 end)
 
 RegisterNetEvent('esx:removeInventoryItem')
-AddEventHandler('esx:removeInventoryItem', function(item, count, showNotification)
+AddEventHandler('esx:removeInventoryItem', function(item, count, showNotification, batch)
 	for k,v in ipairs(ESX.PlayerData.inventory) do
 		if v.name == item then
 			ESX.UI.ShowInventoryItemNotification(false, v.label, v.count - count)
 			ESX.PlayerData.inventory[k].count = count
+			if batch then
+				ESX.PlayerData.inventory[k].batch = batch
+			end
 			break
 		end
 	end
@@ -274,18 +277,18 @@ end
 
 RegisterNetEvent('esx:createPickup')
 AddEventHandler('esx:createPickup', function(pickupId, label, playerId, pickupType, name, components, tintIndex, isInfinity, pickupCoords)
-    local playerPed, entityCoords, forward, objectCoords
-    
-    if isInfinity then
-        objectCoords = pickupCoords
-    else
-        playerPed = GetPlayerPed(GetPlayerFromServerId(playerId))
-        entityCoords = GetEntityCoords(playerPed)
-        forward = GetEntityForwardVector(playerPed)
-        objectCoords = (entityCoords + forward * 1.0)
-    end
+	local playerPed, entityCoords, forward, objectCoords
+	
+	if isInfinity then
+		objectCoords = pickupCoords
+	else
+		playerPed = GetPlayerPed(GetPlayerFromServerId(playerId))
+		entityCoords = GetEntityCoords(playerPed)
+		forward = GetEntityForwardVector(playerPed)
+		objectCoords = (entityCoords + forward * 1.0)
+	end
 
-    AddPickup(pickupId, label, objectCoords, pickupType, name, components, tintIndex)
+	AddPickup(pickupId, label, objectCoords, pickupType, name, components, tintIndex)
 end)
 
 RegisterNetEvent('esx:createMissingPickups')
@@ -357,6 +360,16 @@ AddEventHandler('esx:deleteVehicle', function(radius)
 		end
 	end
 end)
+
+-- Start Anti Cheat
+AddEventHandler('onClientResourceStart', function (resourceName)
+	if ESX.PlayerLoaded then TriggerServerEvent('onClientResourceStart', resourceName) end
+end)
+
+AddEventHandler('onClientResourceStop', function (resourceName)
+	if ESX.PlayerLoaded then TriggerServerEvent('onClientResourceStop', resourceName) end
+end)
+-- End Anti Cheat
 
 -- Pause menu disables HUD display
 if Config.EnableHud then

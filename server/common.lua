@@ -9,6 +9,7 @@ ESX.Pickups = {}
 ESX.PickupId = 0
 ESX.Jobs = {}
 ESX.RegisteredCommands = {}
+ESX.LastInventory = {}
 
 -- Add a seperate table for ExtendedMode functions, but using metatables to limit feature usage on the ESX table
 -- This is to provide backward compatablity with ESX but not add new features to the old ESX tables.
@@ -113,6 +114,20 @@ MySQL.ready(function()
 					end
 				end
 			end)
+
+			for k,v in ipairs(Config.Weapons) do
+				ESX.Items[v.name] = {
+					name = v.name,
+					label = v.label,
+					ammo = 0,
+					quality = 100,
+					components = {},
+					tintIndex = 0,
+					weight = 1000,
+					limit = false,
+					canRemove = true
+				}
+			end
 		
 			MySQL.Async.fetchAll('SELECT * FROM jobs', {}, function(jobs)
 				for k,v in ipairs(jobs) do
