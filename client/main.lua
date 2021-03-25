@@ -379,29 +379,6 @@ if Config.EnableHud then
 	end)
 end
 
--- Keep track of ammo usage
-CreateThread(function()
-	while true do
-		Wait(0)
-
-		if isDead then
-			Wait(500)
-		else
-			local playerPed = PlayerPedId()
-
-			if IsPedShooting(playerPed) then
-				local _, weaponHash = GetCurrentPedWeapon(playerPed, true)
-				local weapon = ESX.GetWeaponFromHash(weaponHash)
-
-				if weapon then
-					local ammoCount = GetAmmoInPedWeapon(playerPed, weaponHash)
-					TriggerServerEvent('esx:updateWeaponAmmo', weapon.name, ammoCount)
-				end
-			end
-		end
-	end
-end)
-
 CreateThread(function()
 	while true do
 		Wait(0)
@@ -519,37 +496,6 @@ CreateThread(function()
 
 		if letSleep then
 			Wait(500)
-		end
-	end
-end)
-
--- Update current player coords
-CreateThread(function()
-	-- wait for player to restore coords
-	while not isLoadoutLoaded do
-		Wait(1000)
-	end
-	
-	local previousCoords = vector3(ESX.PlayerData.coords.x, ESX.PlayerData.coords.y, ESX.PlayerData.coords.z)
-	local playerHeading = ESX.PlayerData.heading
-	local formattedCoords = {x = ESX.Math.Round(previousCoords.x, 1), y = ESX.Math.Round(previousCoords.y, 1), z = ESX.Math.Round(previousCoords.z, 1), heading = playerHeading}
-
-	while true do
-		-- update the players position every second instead of a configed amount otherwise
-		-- serverside won't catch up
-		Wait(1000)
-		local playerPed = PlayerPedId()
-		local playerCoords = GetEntityCoords(playerPed)
-		local distance = #(playerCoords - previousCoords)
-
-		if distance > 10 then
-			previousCoords = playerCoords
-			playerHeading = ESX.Math.Round(GetEntityHeading(playerPed), 1)
-			formattedCoords = {x = ESX.Math.Round(playerCoords.x, 1), y = ESX.Math.Round(playerCoords.y, 1), z = ESX.Math.Round(playerCoords.z, 1), heading = playerHeading}
-			TriggerServerEvent('esx:updateCoords', formattedCoords)
-			if distance > 1 then
-				TriggerServerEvent('esx:updateCoords', formattedCoords)
-			end
 		end
 	end
 end)

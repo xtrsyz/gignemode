@@ -500,6 +500,10 @@ ESX.RegisterServerCallback('esx:getPlayerNames', function(source, cb, players)
 	cb(players)
 end)
 
+AddEventHandler("esx:setAccountMoney", function(user, value, detail) ESX.GetPlayerFromId(user).setAccountMoney(value, detail) end)
+AddEventHandler("esx:addAccountMoney", function(user, value, detail) ESX.GetPlayerFromId(user).addAccountMoney(value, detail) end)
+AddEventHandler("esx:removeAccountMoney", function(user, value, detail) ESX.GetPlayerFromId(user).addAccountMoney(value, detail) end)
+
 -- Add support for EssentialMode >6.4.x
 AddEventHandler("es:setMoney", function(user, value) ESX.GetPlayerFromId(user).setMoney(value, true) end)
 AddEventHandler("es:addMoney", function(user, value) ESX.GetPlayerFromId(user).addMoney(value, true) end)

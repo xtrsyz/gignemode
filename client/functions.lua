@@ -677,11 +677,6 @@ ESX.Game.SetVehicleProperties = function(vehicle, props)
 
 		if props.plate then SetVehicleNumberPlateText(vehicle, props.plate) end
 		if props.plateIndex then SetVehicleNumberPlateTextIndex(vehicle, props.plateIndex) end
-		if props.bodyHealth then SetVehicleBodyHealth(vehicle, props.bodyHealth + 0.0) end
-		if props.engineHealth then SetVehicleEngineHealth(vehicle, props.engineHealth + 0.0) end
-		if props.tankHealth then SetVehiclePetrolTankHealth(vehicle, props.tankHealth + 0.0) end
-		if props.fuelLevel then SetVehicleFuelLevel(vehicle, props.fuelLevel + 0.0) end
-		if props.dirtLevel then SetVehicleDirtLevel(vehicle, props.dirtLevel + 0.0) end
 		if props.color1 then SetVehicleColours(vehicle, props.color1, colorSecondary) end
 		if props.color2 then SetVehicleColours(vehicle, props.color1 or colorPrimary, props.color2) end
 		if props.pearlescentColor then SetVehicleExtraColours(vehicle, props.pearlescentColor, wheelColor) end
@@ -758,6 +753,12 @@ ESX.Game.SetVehicleProperties = function(vehicle, props)
 			SetVehicleMod(vehicle, 48, props.modLivery, false)
 			SetVehicleLivery(vehicle, props.modLivery)
 		end
+
+		if props.bodyHealth then SetVehicleBodyHealth(vehicle, props.bodyHealth + 0.0) end
+		if props.engineHealth then SetVehicleEngineHealth(vehicle, props.engineHealth + 0.0) end
+		if props.tankHealth then SetVehiclePetrolTankHealth(vehicle, props.tankHealth + 0.0) end
+		if props.fuelLevel then SetVehicleFuelLevel(vehicle, props.fuelLevel + 0.0) end
+		if props.dirtLevel then SetVehicleDirtLevel(vehicle, props.dirtLevel + 0.0) end
 	end
 end
 

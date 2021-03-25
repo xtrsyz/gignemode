@@ -21,6 +21,10 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 		TriggerClientEvent(eventName, self.source, ...)
 	end
 
+	self.logEvent = function(eventName, ...)
+		TriggerEvent(eventName, self.source, ...)
+	end
+
 	self.setCoords = function(coords)
 		self.updateCoords(coords)
 		self.triggerEvent('esx:teleport', coords)
@@ -44,9 +48,9 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 
 	self.setMoney = function(money, recursion)
 		money = ESX.Math.Round(money)
-		self.setAccountMoney('money', money)
+		self.setAccountMoney('money', money, recursion)
 
-		if(not recursion)then
+		if(recursion ~= true)then
 			TriggerEvent("es:getPlayerFromId", self.source, function(user) user.setMoney(money) end)
 		end
 	end
@@ -55,12 +59,12 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 		return self.getAccount('bank').money
 	end
 
-	self.removeBank = function(money)
-		self.removeAccountMoney('bank', money)
+	self.removeBank = function(money, detail)
+		self.removeAccountMoney('bank', money, detail)
 	end
 
-	self.addBank = function(money)
-		self.addAccountMoney('bank', money)
+	self.addBank = function(money, detail)
+		self.addAccountMoney('bank', money, detail)
 	end
 
 	self.getMoney = function()
@@ -69,20 +73,20 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 
 	self.addMoney = function(money, recursion)
 		money = ESX.Math.Round(money)
-		self.addAccountMoney('money', money)
+		self.addAccountMoney('money', money, recursion)
 
-		if(not recursion)then
+		if(recursion ~= true)then
 			TriggerEvent("es:getPlayerFromId", self.source, function(user) user.addMoney(money, true) end)
 		end
 	end
 
 	self.removeMoney = function(money, recursion)
-		if(not recursion)then
+		if(recursion ~= true)then
 			TriggerEvent("es:getPlayerFromId", self.source, function(user) user.removeMoney(money, true) end)
 		end
 
 		money = ESX.Math.Round(money)
-		self.removeAccountMoney('money', money)
+		self.removeAccountMoney('money', money, recursion)
 	end
 
 	self.getIdentifier = function()
@@ -90,7 +94,7 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 	end
 
 	self.setGroup = function(newGroup, recursion)
-		if(not recursion)then
+		if(recursion ~= true)then
 			TriggerEvent("es:getPlayerFromId", self.source, function(user) user.set("group", newGroup) end)
 		end
 
@@ -104,7 +108,7 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 	end
 
 	self.set = function(k, v, recursion)
-		if(not recursion)then
+		if(recursion ~= true)then
 			TriggerEvent("es:getPlayerFromId", self.source, function(user) if(user)then user.set(k, v) end end)
 		end
 
@@ -194,7 +198,7 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 		self.name = newName
 	end
 
-	self.setAccountMoney = function(accountName, money)
+	self.setAccountMoney = function(accountName, money, detail)
 		if money >= 0 then
 			local account = self.getAccount(accountName)
 
@@ -204,11 +208,12 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 				account.money = newMoney
 
 				self.triggerEvent('esx:setAccountMoney', account)
+				self.logEvent('log:setAccountMoney', account, prevMoney, detail)
 			end
 		end
 	end
 
-	self.addAccountMoney = function(accountName, money)
+	self.addAccountMoney = function(accountName, money, detail)
 		if money > 0 then
 			local account = self.getAccount(accountName)
 
@@ -217,11 +222,12 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 				account.money = newMoney
 
 				self.triggerEvent('esx:setAccountMoney', account)
+				self.logEvent('log:addAccountMoney', account, money, detail)
 			end
 		end
 	end
 
-	self.removeAccountMoney = function(accountName, money)
+	self.removeAccountMoney = function(accountName, money, detail)
 		if money > 0 then
 			local account = self.getAccount(accountName)
 
@@ -230,6 +236,7 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 				account.money = newMoney
 
 				self.triggerEvent('esx:setAccountMoney', account)
+				self.logEvent('log:removeAccountMoney', account, money, detail)
 			end
 		end
 	end
@@ -362,8 +369,8 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 		end
 
 		for name,count in pairs(oldItems) do
-			if item.count >= count then
-				local item = self.getInventoryItem(name)
+			local item = self.getInventoryItem(name)
+			if item.count >= count then				
 				weightWithoutFirstItem = weightWithoutFirstItem - (item.weight * count)
 			else
 				return false
@@ -372,6 +379,21 @@ function CreateExtendedPlayer(playerId, identifier, group, accounts, inventory, 
 
 		local weightWithTestItem = ESX.Math.Round(weightWithoutFirstItem + weightChangeItems)
 		return weightWithTestItem <= self.maxWeight
+	end
+
+	self.swapItems = function(removeItems, addItems)
+		if type(removeItems) ~= 'table' then removeItems = {[removeItems] = 1} end
+		if type(addItems) ~= 'table' then addItems = {[addItems] = 1} end
+		if self.canSwapItems(removeItems, addItems) then
+			for name,count in pairs(removeItems) do
+				self.removeInventoryItem(name, count)
+			end
+			for name,count in pairs(addItems) do
+				self.addInventoryItem(name, count)
+			end
+			return true
+		end
+		return false
 	end
 
 	self.setMaxWeight = function(newWeight)
