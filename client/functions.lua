@@ -1,5 +1,17 @@
 ESX = {}
-ESX.PlayerData = {}
+ESX.Player = {}
+
+-- as you can see, player data is always populated with defaults
+-- this is to prevent script errors, esx itself is never nil but
+-- most character related info is waiting for kashacter to choose char.
+-- that's why we populate this table with default stuff: so nothing breaks,
+-- it also gives a basic understanding what's available within ESX.Player.*
+
+ESX.PlayerData = {
+	job = {name = 'unemployed', grade = 0, label = 'Unemployed', grade_label = 'Unemployed'},
+	inventory = {}, loadout = {}, accounts = {}, groups = {}, name = 'Unknown Name'
+}
+
 ESX.PlayerLoaded = false
 ESX.CurrentRequestId = 0
 ESX.ServerCallbacks = {}
@@ -19,6 +31,28 @@ ESX.Scaleform = {}
 ESX.Scaleform.Utils = {}
 
 ESX.Streaming = {}
+
+ESX.Status = {}
+ESX.GetStatus = function (key) return key and ESX.Status[key] or ESX.Status end
+ESX.SetStatus = function (key, value) ESX.Status[key] = value end
+
+ESX.ClearTimeout = function(timeoutId) ESX.TimeoutCallbacks[timeoutId] = nil end
+
+ESX.IsPlayerLoaded = function() return ESX.PlayerLoaded end
+ESX.GetPlayerData = function() return ESX.PlayerData end
+ESX.SetPlayerData = function(key, val) ESX.PlayerData[key] = val end
+
+ESX.Player.GetName = function() return ESX.PlayerData.name end
+ESX.Player.GetInventory = function() return ESX.PlayerData.inventory end
+ESX.Player.GetLoadout = function() return ESX.PlayerData.loadout end
+ESX.Player.GetAccounts = function() return ESX.PlayerData.accounts end
+
+ESX.Player.GetJob = function() return ESX.PlayerData.job end
+ESX.Player.GetJobName = function() return ESX.PlayerData.job.name end
+ESX.Player.GetJobLabel = function() return ESX.PlayerData.job.label end
+ESX.Player.GetJobGrade = function() return ESX.PlayerData.job.grade end
+ESX.Player.GetJobGradeLabel = function() return ESX.PlayerData.job.grade_label end
+
 ESX.Functions = {}
 
 ESX.RegisterFunction = function(name, cb)
@@ -29,14 +63,14 @@ ESX.Function = function(name, ...)
 	if ESX.Functions[name] then
 		ESX.Functions[name](...)
 	else
-		print(('^1[ExtendedMode]^7 Function "%s" does not exist.'):format(name))
+		print(('^1[gigneMode]^7 Function "%s" does not exist.'):format(name))
 	end
 end
 
--- Add a seperate table for ExtendedMode functions, but using metatables to limit feature usage on the ESX table
+-- Add a seperate table for gigneMode functions, but using metatables to limit feature usage on the ESX table
 -- This is to provide backward compatablity with ESX but not add new features to the old ESX tables.
 -- Note: Please add all new namespaces to ExM _after_ this block
-do
+--[[do
     local function processTable(thisTable)
         local thisObject = setmetatable({}, {
             __index = thisTable
@@ -49,7 +83,7 @@ do
         return thisObject
     end
     ExM = processTable(ESX)
-end
+end--]]
 
 ESX.SetTimeout = function(msec, cb)
 	table.insert(ESX.TimeoutCallbacks, {
@@ -116,6 +150,24 @@ ESX.ShowHelpNotification = function(msg, thisFrame, beep, duration)
 	end
 end
 
+ESX.ShowFloatingHelpNotification = function(msg, coords)
+	if Config.ShowHelpNotification then
+		AddTextEntry('esxFloatingHelpNotification', msg)
+		SetFloatingHelpTextWorldPosition(1, coords)
+		SetFloatingHelpTextStyle(1, 1, 2, -1, 3, 0)
+		BeginTextCommandDisplayHelp('esxFloatingHelpNotification')
+		EndTextCommandDisplayHelp(2, false, false, -1)
+	else
+		TriggerEvent('showFloatingHelpNotification', msg, thisFrame, beep, duration)
+	end
+end
+
+ESX.DrawSpinner = function(msg)
+	AddTextEntry('esxSpinner', msg)
+	BeginTextCommandBusyspinnerOn('esxSpinner')
+	EndTextCommandBusyspinnerOn(4)
+end
+
 ESX.TriggerServerCallback = function(name, cb, ...)
 	ESX.ServerCallbacks[ESX.CurrentRequestId] = cb
 
@@ -126,6 +178,13 @@ ESX.TriggerServerCallback = function(name, cb, ...)
 	else
 		ESX.CurrentRequestId = 0
 	end
+end
+
+ESX.UI.rightInfoNotification = function(label)
+	SendNUIMessage({
+		action = 'rightInfoNotification',
+		add    = label,
+	})
 end
 
 ESX.UI.HUD.SetDisplay = function(opacity)
@@ -195,16 +254,20 @@ end
 ESX.UI.Menu.Open = function(type, namespace, name, data, submit, cancel, change, close)
 	local menu = {}
 
-	menu.type      = type
+	menu.type = type
 	menu.namespace = namespace
-	menu.name      = name
-	menu.data      = data
-	menu.submit    = submit
-	menu.cancel    = cancel
-	menu.change    = change
+	menu.name = name
+	menu.data = data
+	menu.submit = submit
+	menu.cancel = cancel
+	menu.change = change
+
+	menu.refresh = function() ESX.UI.Menu.RegisteredTypes[type].open(namespace, name, menu.data) end
+	menu.setElement = function(i, key, val) menu.data.elements[i][key] = val end
+	menu.setElements = function(newElements) menu.data.elements = newElements end
+	menu.setTitle = function(val) menu.data.title = val end
 
 	menu.close = function()
-
 		ESX.UI.Menu.RegisteredTypes[type].close(namespace, name)
 
 		for i=1, #ESX.UI.Menu.Opened, 1 do
@@ -218,11 +281,9 @@ ESX.UI.Menu.Open = function(type, namespace, name, data, submit, cancel, change,
 		if close then
 			close()
 		end
-
 	end
 
 	menu.update = function(query, newData)
-
 		for i=1, #menu.data.elements, 1 do
 			local match = true
 
@@ -238,23 +299,6 @@ ESX.UI.Menu.Open = function(type, namespace, name, data, submit, cancel, change,
 				end
 			end
 		end
-
-	end
-
-	menu.refresh = function()
-		ESX.UI.Menu.RegisteredTypes[type].open(namespace, name, menu.data)
-	end
-
-	menu.setElement = function(i, key, val)
-		menu.data.elements[i][key] = val
-	end
-	
-	menu.setElements = function(newElements)
-		menu.data.elements = newElements
-	end
-
-	menu.setTitle = function(val)
-		menu.data.title = val
 	end
 
 	menu.removeElement = function(query)
@@ -307,13 +351,8 @@ ESX.UI.Menu.GetOpened = function(type, namespace, name)
 	end
 end
 
-ESX.UI.Menu.GetOpenedMenus = function()
-	return ESX.UI.Menu.Opened
-end
-
-ESX.UI.Menu.IsOpen = function(type, namespace, name)
-	return ESX.UI.Menu.GetOpened(type, namespace, name) ~= nil
-end
+ESX.UI.Menu.GetOpenedMenus = function() return ESX.UI.Menu.Opened end
+ESX.UI.Menu.IsOpen = function(type, namespace, name) return ESX.UI.Menu.GetOpened(type, namespace, name) ~= nil end
 
 ESX.UI.ShowInventoryItemNotification = function(add, item, count)
 	SendNUIMessage({
@@ -324,20 +363,20 @@ ESX.UI.ShowInventoryItemNotification = function(add, item, count)
 	})
 end
 
-ExM.Game.CreatePed = function(pedModel, pedCoords, isNetworked, pedType)
+ESX.Game.CreatePed = function(pedModel, pedCoords, isNetworked, pedType)
 	local vector = type(pedCoords) == "vector4" and pedCoords or type(pedCoords) == "vector3" and vector4(pedCoords, 0.0)
 	pedType = pedType ~= nil and pedType or 4
 	
-	ExM.Streaming.RequestModel(pedModel)
+	ESX.Streaming.RequestModel(pedModel)
 	return CreatePed(pedType, pedModel, vector, isNetworked)
 end
 
-ExM.Game.PlayAnim = function(animDict, animName, upperbodyOnly, duration)
+ESX.Game.PlayAnim = function(animDict, animName, upperbodyOnly, duration)
 	-- Quick simple function to run an animation
 	local flags = upperbodyOnly == true and 16 or 0
 	local runTime = duration ~= nil and duration or -1
 	
-	ExM.Streaming.RequestAnimDict(animDict)
+	ESX.Streaming.RequestAnimDict(animDict)
 	TaskPlayAnim(PlayerPedId(), animDict, animName, 8.0, 1.0, runTime, flags, 0.0, false, false, true)
 	RemoveAnimDict(animDict)
 end
@@ -353,7 +392,7 @@ ESX.Game.GetPedMugshot = function(ped, transparent)
 		end
 
 		while not IsPedheadshotReady(mugshot) do
-			Wait(0)
+			Citizen.Wait(0)
 		end
 
 		return mugshot, GetPedheadshotTxdString(mugshot)
@@ -362,13 +401,23 @@ ESX.Game.GetPedMugshot = function(ped, transparent)
 	end
 end
 
-ESX.Game.Teleport = function(entity, coords, cb)
+ESX.Game.Teleport = function(entity, coords, cb, usePlayerPed)
+	entity = usePlayerPed and PlayerPedId() or entity
 	local vector = type(coords) == "vector4" and coords or type(coords) == "vector3" and vector4(coords, 0.0) or vec(coords.x, coords.y, coords.z, coords.heading or 0.0)
 	
 	if DoesEntityExist(entity) then
+		local timeout = 0
 		RequestCollisionAtCoord(vector.xyz)
-		while not HasCollisionLoadedAroundEntity(entity) do
-			Wait(0)
+		while not HasCollisionLoadedAroundEntity(entity) and timeout < 1000 do
+			Citizen.Wait(0)
+			timeout = timeout + 1
+		end
+
+		timeout = 0
+
+		while IsNetworkLoadingScene() and timeout < 1000 do
+			Citizen.Wait(0)
+			timeout = timeout + 1
 		end
 
 		SetEntityCoords(entity, vector.xyz, false, false, false, false)
@@ -380,18 +429,34 @@ ESX.Game.Teleport = function(entity, coords, cb)
 	end
 end
 
+ESX.Game.RequestNetworkControlOfEntity = function(entityHandle, drawSpinner)
+	if entityHandle and DoesEntityExist(entityHandle) then
+		if drawSpinner then ESX.DrawSpinner('Requesting entity network control') end
+		local attempt = 0
+
+		while DoesEntityExist(entityHandle) and not NetworkHasControlOfEntity(entityHandle) and attempt < 5000 do
+			Citizen.Wait(1)
+			NetworkRequestControlOfEntity(entityHandle)
+			attempt = attempt + 1
+		end
+
+		if drawSpinner then BusyspinnerOff() end
+		return (DoesEntityExist(entityHandle) and NetworkHasControlOfEntity(entityHandle))
+	else
+		return false
+	end
+end
+
 ESX.Game.SpawnObject = function(model, coords, cb, networked, dynamic)
 	local vector = type(coords) == "vector3" and coords or vec(coords.x, coords.y, coords.z)
+	model = (type(model) == 'number' and model or GetHashKey(model))
 	networked = networked == nil and true or false
 	dynamic = dynamic ~= nil and true or false
 	
 	CreateThread(function()
 		ESX.Streaming.RequestModel(model)
-		
-		-- The below has to be done just for CreateObject since for some reason CreateObjects model argument is set
-		-- as an Object instead of a hash so it doesn't automatically hash the item
-		model = type(model) == 'number' and model or GetHashKey(model)
 		local obj = CreateObject(model, vector.xyz, networked, false, dynamic)
+		SetModelAsNoLongerNeeded(model)
 		if cb then
 			cb(obj)
 		end
@@ -403,48 +468,60 @@ ESX.Game.SpawnLocalObject = function(model, coords, cb)
 	ESX.Game.SpawnObject(model, coords, cb, false)
 end
 
-ESX.Game.DeleteVehicle = function(vehicle)
-	SetEntityAsMissionEntity(vehicle, false, true)
-	DeleteVehicle(vehicle)
+ESX.Game.DeleteEntity = function(entity)
+	SetEntityAsMissionEntity(entity, false, true)
+	DeleteEntity(entity)
 end
 
-ESX.Game.DeleteObject = function(object)
-	SetEntityAsMissionEntity(object, false, true)
-	DeleteObject(object)
+ESX.Game.DeleteVehicle = function(vehicle) ESX.Game.DeleteEntity(vehicle) end
+ESX.Game.DeleteObject = function(object) ESX.Game.DeleteEntity(object) end
+
+ESX.Game.SpawnVehicle = function(modelName, coords, heading, cb, vehicleProperties)
+	local model = (type(modelName) == 'number' and modelName or GetHashKey(modelName))
+
+	ESX.TriggerServerCallback('esx:spawnVehicle', function(entityNetworkId)
+		while not NetworkDoesNetworkIdExist(entityNetworkId) do Citizen.Wait(100) end
+		local entityHandle = NetworkGetEntityFromNetworkId(entityNetworkId)
+
+		if ESX.Game.RequestNetworkControlOfEntity(entityHandle) then
+			SetVehicleNeedsToBeHotwired(entityHandle, false)
+			SetVehRadioStation(entityHandle, 'OFF')
+			SetVehicleHasBeenOwnedByPlayer(entityHandle, true)
+			SetVehicleAutoRepairDisabled(entityHandle, true)
+
+			if vehicleProperties then ESX.Game.SetVehicleProperties(entityHandle, vehicleProperties) end
+			if cb then cb(entityHandle) end
+		end
+	end, model, coords, heading)
 end
 
-ESX.Game.SpawnVehicle = function(model, coords, heading, cb, networked)
-	local vector = type(coords) == "vector3" and coords or vec(coords.x, coords.y, coords.z)
-	networked = networked == nil and true or false
-	CreateThread(function()
+ESX.Game.SpawnLocalVehicle = function(modelName, coords, heading, cb)
+	local model = (type(modelName) == 'number' and modelName or GetHashKey(modelName))
+
+	Citizen.CreateThread(function()
 		ESX.Streaming.RequestModel(model)
 
-		local vehicle = CreateVehicle(model, vector.xyz, heading, networked, false)
-		local id = NetworkGetNetworkIdFromEntity(vehicle)
+		local vehicle = CreateVehicle(model, coords.x, coords.y, coords.z, heading, false, false)
+		local timeout = 0
 
-		SetNetworkIdCanMigrate(id, true)
 		SetEntityAsMissionEntity(vehicle, true, false)
 		SetVehicleHasBeenOwnedByPlayer(vehicle, true)
 		SetVehicleNeedsToBeHotwired(vehicle, false)
-		SetModelAsNoLongerNeeded(model)
 		SetVehRadioStation(vehicle, 'OFF')
+		SetModelAsNoLongerNeeded(model)
+		RequestCollisionAtCoord(coords.x, coords.y, coords.z)
+		SetVehicleAutoRepairDisabled(vehicle, true)
 
-		DecorSetInt(vehicle,"GamemodeCar",955)
-
-		RequestCollisionAtCoord(vector.xyz)
-		while not HasCollisionLoadedAroundEntity(vehicle) do
-			Wait(0)
+		-- we can get stuck here if any of the axies are "invalid"
+		while not HasCollisionLoadedAroundEntity(vehicle) and timeout < 2000 do
+			Citizen.Wait(0)
+			timeout = timeout + 1
 		end
 
 		if cb then
 			cb(vehicle)
 		end
 	end)
-end
-
-ESX.Game.SpawnLocalVehicle = function(model, coords, heading, cb)
-	-- Why have 2 separate functions for this? Just call the other one with an extra param
-	ESX.Game.SpawnVehicle(model, coords, heading, cb, false)
 end
 
 ESX.Game.IsVehicleEmpty = function(vehicle)
@@ -462,13 +539,6 @@ ESX.Game.GetObjects = function()
 	end
 
 	return objects
-end
-
-ESX.Game.GetHashKey = function(modelName)
-	if type(modelName) ~= "number" then
-		modelName = GetHashKey(modelName)
-	end
-	return modelName
 end
 
 ESX.Game.GetPlayers = function(onlyOtherPlayers, returnKeyValue, returnPeds)
@@ -524,10 +594,12 @@ ESX.Game.GetClosestEntity = function(entities, isPlayerEntities, coords, modelFi
 		local filter = {}
 		if type(modelFilter) == 'table' then
 			for _,model in pairs(modelFilter) do
-				filter[ESX.Game.GetHashKey(model)] = model
+				local hashModel = (type(model) == 'number' and model or GetHashKey(model))
+				filter[hashModel] = model
 			end
 		elseif modelFilter ~= '' then
-			filter[ESX.Game.GetHashKey(modelFilter)] = modelFilter
+			local hashModel = (type(modelFilter) == 'number' and modelFilter or GetHashKey(modelFilter))
+			filter[hashModel] = modelFilter
 		end
 		modelFilter = filter
 	end
@@ -570,8 +642,6 @@ ESX.Game.GetVehicleInDirection = function()
 	if hit == 1 and GetEntityType(entityHit) == 2 then
 		return entityHit
 	end
-
-	return nil
 end
 
 ESX.Game.GetClosestObject = function(coords, modelFilter) return ESX.Game.GetClosestEntity(ESX.Game.GetObjects(), false, coords, modelFilter) end
@@ -586,7 +656,10 @@ ESX.Game.GetVehicleProperties = function(vehicle)
 	if DoesEntityExist(vehicle) then
 		local colorPrimary, colorSecondary = GetVehicleColours(vehicle)
 		local pearlescentColor, wheelColor = GetVehicleExtraColours(vehicle)
-		local extras = {}
+		local vehicleModel = GetEntityModel(vehicle)
+		local vehicleLabel, extras = GetLabelText(GetDisplayNameFromVehicleModel(vehicleModel)), {}
+
+		if vehicleLabel == 'NULL' then vehicleLabel = GetDisplayNameFromVehicleModel(vehicleModel) end
 
 		for id=0, 12 do
 			if DoesExtraExist(vehicle, id) then
@@ -596,17 +669,18 @@ ESX.Game.GetVehicleProperties = function(vehicle)
 		end
 
 		return {
-			model             = GetEntityModel(vehicle),
+			model             = vehicleModel,
+			label             = vehicleLabel,
 
 			plate             = ESX.Math.Trim(GetVehicleNumberPlateText(vehicle)),
 			plateIndex        = GetVehicleNumberPlateTextIndex(vehicle),
 
-			bodyHealth        = ESX.Math.Round(GetVehicleBodyHealth(vehicle), 1),
-			engineHealth      = ESX.Math.Round(GetVehicleEngineHealth(vehicle), 1),
-			tankHealth        = ESX.Math.Round(GetVehiclePetrolTankHealth(vehicle), 1),
+			bodyHealth        = math.round(GetVehicleBodyHealth(vehicle), 1),
+			engineHealth      = math.round(GetVehicleEngineHealth(vehicle), 1),
+			petrolTankHealth  = math.round(GetVehiclePetrolTankHealth(vehicle), 1),
 
-			fuelLevel         = ESX.Math.Round(GetVehicleFuelLevel(vehicle), 1),
-			dirtLevel         = ESX.Math.Round(GetVehicleDirtLevel(vehicle), 1),
+			fuelLevel         = math.round(GetVehicleFuelLevel(vehicle), 1),
+			dirtLevel         = math.round(GetVehicleDirtLevel(vehicle), 1),
 			color1            = colorPrimary,
 			color2            = colorSecondary,
 
@@ -676,10 +750,10 @@ ESX.Game.GetVehicleProperties = function(vehicle)
 			modTrimB          = GetVehicleMod(vehicle, 44),
 			modTank           = GetVehicleMod(vehicle, 45),
 			modWindows        = GetVehicleMod(vehicle, 46),
-			modLivery         = GetVehicleLivery(vehicle)
+			modStandardLivery = GetVehicleMod(vehicle, 48),
+			modLivery         = GetVehicleLivery(vehicle),
+			bulletProofTyres  = not GetVehicleTyresCanBurst(vehicle)
 		}
-	else
-		return
 	end
 end
 
@@ -688,9 +762,19 @@ ESX.Game.SetVehicleProperties = function(vehicle, props)
 		local colorPrimary, colorSecondary = GetVehicleColours(vehicle)
 		local pearlescentColor, wheelColor = GetVehicleExtraColours(vehicle)
 		SetVehicleModKit(vehicle, 0)
+		SetVehicleAutoRepairDisabled(vehicle, true)
 
 		if props.plate then SetVehicleNumberPlateText(vehicle, props.plate) end
 		if props.plateIndex then SetVehicleNumberPlateTextIndex(vehicle, props.plateIndex) end
+		if props.bodyHealth then SetVehicleBodyHealth(vehicle, props.bodyHealth + 0.0) end
+		if props.engineHealth then SetVehicleEngineHealth(vehicle, props.engineHealth + 0.0) end
+		if props.petrolTankHealth then SetVehiclePetrolTankHealth(vehicle, props.petrolTankHealth + 0.0) end
+		if props.fuelLevel then 
+			SetVehicleFuelLevel(vehicle, props.fuelLevel + 0.0)
+			DecorSetFloat(vehicle, "_Fuel_Level", props.fuelLevel + 0.0)
+		end
+
+		if props.dirtLevel then SetVehicleDirtLevel(vehicle, props.dirtLevel + 0.0) end
 		if props.color1 then SetVehicleColours(vehicle, props.color1, colorSecondary) end
 		if props.color2 then SetVehicleColours(vehicle, props.color1 or colorPrimary, props.color2) end
 		if props.pearlescentColor then SetVehicleExtraColours(vehicle, props.pearlescentColor, wheelColor) end
@@ -715,6 +799,7 @@ ESX.Game.SetVehicleProperties = function(vehicle, props)
 			end
 		end
 
+		if props.bulletProofTyres ~= nil then SetVehicleTyresCanBurst(vehicle, not props.bulletProofTyres) end
 		if props.neonColor then SetVehicleNeonLightsColour(vehicle, props.neonColor[1], props.neonColor[2], props.neonColor[3]) end
 		if props.xenonColor then SetVehicleXenonLightsColour(vehicle, props.xenonColor) end
 		if props.modSmokeEnabled then ToggleVehicleMod(vehicle, 20, true) end
@@ -767,12 +852,6 @@ ESX.Game.SetVehicleProperties = function(vehicle, props)
 			SetVehicleMod(vehicle, 48, props.modLivery, false)
 			SetVehicleLivery(vehicle, props.modLivery)
 		end
-
-		if props.bodyHealth then SetVehicleBodyHealth(vehicle, props.bodyHealth + 0.0) end
-		if props.engineHealth then SetVehicleEngineHealth(vehicle, props.engineHealth + 0.0) end
-		if props.tankHealth then SetVehiclePetrolTankHealth(vehicle, props.tankHealth + 0.0) end
-		if props.fuelLevel then SetVehicleFuelLevel(vehicle, props.fuelLevel + 0.0) end
-		if props.dirtLevel then SetVehicleDirtLevel(vehicle, props.dirtLevel + 0.0) end
 	end
 end
 
@@ -804,253 +883,6 @@ ESX.Game.Utils.DrawText3D = function(coords, text, size, font)
 	ClearDrawOrigin()
 end
 
-ESX.ShowInventory = function()
-	local playerPed = PlayerPedId()
-	local elements, currentWeight = {}, 0
-
-	for k,v in pairs(ESX.PlayerData.accounts) do
-		if v.money > 0 then
-			local formattedMoney = _U('locale_currency', ESX.Math.GroupDigits(v.money))
-			local canDrop = v.name ~= 'bank'
-
-			table.insert(elements, {
-				label = ('%s: <span style="color:green;">%s</span>'):format(v.label, formattedMoney),
-				count = v.money,
-				type = 'item_account',
-				value = v.name,
-				usable = false,
-				rare = false,
-				canRemove = canDrop
-			})
-		end
-	end
-
-	for k,v in ipairs(ESX.PlayerData.inventory) do
-		if v.count > 0 then
-			currentWeight = currentWeight + (v.weight * v.count)
-
-			table.insert(elements, {
-				label = ('%s x%s'):format(v.label, v.count),
-				count = v.count,
-				type = 'item_standard',
-				value = v.name,
-				usable = v.usable,
-				rare = v.rare,
-				canRemove = v.canRemove
-			})
-		end
-	end
-
-	for k,v in ipairs(Config.Weapons) do
-		local weaponHash = GetHashKey(v.name)
-
-		if HasPedGotWeapon(playerPed, weaponHash, false) then
-			local ammo, label = GetAmmoInPedWeapon(playerPed, weaponHash)
-
-			if v.ammo then
-				label = ('%s - %s %s'):format(v.label, ammo, v.ammo.label)
-			else
-				label = v.label
-			end
-
-			table.insert(elements, {
-				label = label,
-				count = 1,
-				type = 'item_weapon',
-				value = v.name,
-				usable = false,
-				rare = false,
-				ammo = ammo,
-				canGiveAmmo = (v.ammo ~= nil),
-				canRemove = true
-			})
-		end
-	end
-
-	ESX.UI.Menu.CloseAll()
-
-	ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'inventory', {
-		title    = _U('inventory', currentWeight, ESX.PlayerData.maxWeight),
-		align    = 'bottom-right',
-		elements = elements
-	}, function(data, menu)
-		menu.close()
-		local player, distance = ESX.Game.GetClosestPlayer()
-		local elements = {}
-
-		if data.current.usable then
-			table.insert(elements, {label = _U('use'), action = 'use', type = data.current.type, value = data.current.value})
-		end
-
-		if data.current.canRemove then
-			if player ~= -1 and distance <= 3.0 then
-				table.insert(elements, {label = _U('give'), action = 'give', type = data.current.type, value = data.current.value})
-			end
-
-			table.insert(elements, {label = _U('remove'), action = 'remove', type = data.current.type, value = data.current.value})
-		end
-
-		if data.current.type == 'item_weapon' and data.current.canGiveAmmo and data.current.ammo > 0 and player ~= -1 and distance <= 3.0 then
-			table.insert(elements, {label = _U('giveammo'), action = 'give_ammo', type = data.current.type, value = data.current.value})
-		end
-
-		table.insert(elements, {label = _U('return'), action = 'return'})
-
-		ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'inventory_item', {
-			title    = data.current.label,
-			align    = 'bottom-right',
-			elements = elements,
-		}, function(data1, menu1)
-			local item, type = data1.current.value, data1.current.type
-
-			if data1.current.action == 'give' then
-				local playersNearby = ESX.Game.GetPlayersInArea(GetEntityCoords(playerPed), 3.0)
-
-				if #playersNearby > 0 then
-					local players, elements = {}, {}
-
-					for k,player in ipairs(playersNearby) do
-						players[GetPlayerServerId(player)] = true
-					end
-
-					ESX.TriggerServerCallback('esx:getPlayerNames', function(returnedPlayers)
-						for playerId,playerName in pairs(returnedPlayers) do
-							table.insert(elements, {
-								label = playerName,
-								playerId = playerId
-							})
-						end
-
-						ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'give_item_to', {
-							title    = _U('give_to'),
-							align    = 'bottom-right',
-							elements = elements
-						}, function(data2, menu2)
-							local selectedPlayer, selectedPlayerId = GetPlayerFromServerId(data2.current.playerId), data2.current.playerId
-							playersNearby = ESX.Game.GetPlayersInArea(GetEntityCoords(playerPed), 3.0)
-							playersNearby = ESX.Table.Set(playersNearby)
-
-							if playersNearby[selectedPlayer] then
-								local selectedPlayerPed = GetPlayerPed(selectedPlayer)
-
-								if IsPedOnFoot(selectedPlayerPed) then
-									if type == 'item_weapon' then
-										TriggerServerEvent('esx:giveInventoryItem', selectedPlayerId, type, item, nil)
-										menu2.close()
-										menu1.close()
-									else
-										ESX.UI.Menu.Open('dialog', GetCurrentResourceName(), 'inventory_item_count_give', {
-											title = _U('amount')
-										}, function(data3, menu3)
-											local quantity = tonumber(data3.value)
-
-											if quantity then
-												TriggerServerEvent('esx:giveInventoryItem', selectedPlayerId, type, item, quantity)
-												menu3.close()
-												menu2.close()
-												menu1.close()
-											else
-												ESX.ShowNotification(_U('amount_invalid'))
-											end
-										end, function(data3, menu3)
-											menu3.close()
-										end)
-									end
-								else
-									ESX.ShowNotification(_U('in_vehicle'))
-								end
-							else
-								ESX.ShowNotification(_U('players_nearby'))
-								menu2.close()
-							end
-						end, function(data2, menu2)
-							menu2.close()
-						end)
-					end, players)
-				else
-					ESX.ShowNotification(_U('players_nearby'))
-				end
-			elseif data1.current.action == 'remove' then
-				if IsPedOnFoot(playerPed) then
-					local dict, anim = 'weapons@first_person@aim_rng@generic@projectile@sticky_bomb@', 'plant_floor'
-					ESX.Streaming.RequestAnimDict(dict)
-
-					if type == 'item_weapon' then
-						menu1.close()
-						TaskPlayAnim(playerPed, dict, anim, 8.0, 1.0, 1000, 16, 0.0, false, false, false)
-						Wait(1000)
-						TriggerServerEvent('esx:removeInventoryItem', type, item)
-					else
-						ESX.UI.Menu.Open('dialog', GetCurrentResourceName(), 'inventory_item_count_remove', {
-							title = _U('amount')
-						}, function(data2, menu2)
-							local quantity = tonumber(data2.value)
-
-							if quantity then
-								menu2.close()
-								menu1.close()
-								TaskPlayAnim(playerPed, dict, anim, 8.0, 1.0, 1000, 16, 0.0, false, false, false)
-								Wait(1000)
-								TriggerServerEvent('esx:removeInventoryItem', type, item, quantity)
-							else
-								ESX.ShowNotification(_U('amount_invalid'))
-							end
-						end, function(data2, menu2)
-							menu2.close()
-						end)
-					end
-				end
-			elseif data1.current.action == 'use' then
-				TriggerServerEvent('esx:useItem', item)
-			elseif data1.current.action == 'return' then
-				ESX.UI.Menu.CloseAll()
-				ESX.ShowInventory()
-			elseif data1.current.action == 'give_ammo' then
-				local closestPlayer, closestDistance = ESX.Game.GetClosestPlayer()
-				local closestPed = GetPlayerPed(closestPlayer)
-				local pedAmmo = GetAmmoInPedWeapon(playerPed, GetHashKey(item))
-
-				if IsPedOnFoot(closestPed) then
-					if closestPlayer ~= -1 and closestDistance < 3.0 then
-						if pedAmmo > 0 then
-							ESX.UI.Menu.Open('dialog', GetCurrentResourceName(), 'inventory_item_count_give', {
-								title = _U('amountammo')
-							}, function(data2, menu2)
-								local quantity = tonumber(data2.value)
-
-								if quantity then
-									if pedAmmo >= quantity and quantity > 0 then
-										TriggerServerEvent('esx:giveInventoryItem', GetPlayerServerId(closestPlayer), 'item_ammo', item, quantity)
-										menu2.close()
-										menu1.close()
-									else
-										ESX.ShowNotification(_U('noammo'))
-									end
-								else
-									ESX.ShowNotification(_U('amount_invalid'))
-								end
-							end, function(data2, menu2)
-								menu2.close()
-							end)
-						else
-							ESX.ShowNotification(_U('noammo'))
-						end
-					else
-						ESX.ShowNotification(_U('players_nearby'))
-					end
-				else
-					ESX.ShowNotification(_U('in_vehicle'))
-				end
-			end
-		end, function(data1, menu1)
-			ESX.UI.Menu.CloseAll()
-			ESX.ShowInventory()
-		end)
-	end, function(data, menu)
-		menu.close()
-	end)
-end
-
 RegisterNetEvent('esx:serverCallback')
 AddEventHandler('esx:serverCallback', function(requestId, ...)
 	ESX.ServerCallbacks[requestId](...)
@@ -1072,6 +904,9 @@ AddEventHandler('esx:showHelpNotification', function(msg, thisFrame, beep, durat
 	ESX.ShowHelpNotification(msg, thisFrame, beep, duration)
 end)
 
+RegisterNetEvent('esx:showInventoryItemNotification')
+AddEventHandler('esx:showInventoryItemNotification', function(msg, add) ESX.UI.ShowInventoryItemNotification(add, msg, 1) end)
+
 -- SetTimeout
 CreateThread(function()
 	while true do
@@ -1089,10 +924,10 @@ CreateThread(function()
 	end
 end)
 
-ExM.Markers = {}
-ExM.Markers.Table = {}
+ESX.Markers = {}
+ESX.Markers.Table = {}
 
-ExM.Markers.Add = function(mType, mPos, red, green, blue, alpha, rangeToShow, bobUpAndDown, mScale, mRot, mDir, faceCamera, textureDict, textureName)
+ESX.Markers.Add = function(mType, mPos, red, green, blue, alpha, rangeToShow, bobUpAndDown, mScale, mRot, mDir, faceCamera, textureDict, textureName)
 	rangeToShow = rangeToShow ~= nil and rangeToShow or 50.0
 	mScale = mScale ~= nil and mScale or vec(1, 1, 1)
 	mDir = mDir ~= nil and mDir or vec(0, 0, 0)
@@ -1103,7 +938,7 @@ ExM.Markers.Add = function(mType, mPos, red, green, blue, alpha, rangeToShow, bo
 	textureName = textureName or nil
 	
 	if textureDict ~= nil then
-		ExM.Streaming.RequestStreamedTextureDict(textureDict)
+		ESX.Streaming.RequestStreamedTextureDict(textureDict)
 	end
 	
 	local markerData = {
@@ -1125,21 +960,21 @@ ExM.Markers.Add = function(mType, mPos, red, green, blue, alpha, rangeToShow, bo
 		deleteNow = false
 	}
 	local tableKey = tostring(markerData)
-    ExM.Markers.Table[tableKey] = markerData
+    ESX.Markers.Table[tableKey] = markerData
 
     return tableKey
 end
 
-ExM.Markers.Remove = function(markerKey)
-	ExM.Markers.Table[markerKey].deleteNow = true
-	local textureDict = ExM.Markers.Table[markerKey].dict
+ESX.Markers.Remove = function(markerKey)
+	ESX.Markers.Table[markerKey].deleteNow = true
+	local textureDict = ESX.Markers.Table[markerKey].dict
 	if textureDict ~= nil then
 		SetStreamedTextureDictAsNoLongerNeeded(textureDict)
 	end
 end
 
-ExM.Markers.In = function(markerKey)
-	return ExM.Markers.Table[markerKey].isInside
+ESX.Markers.In = function(markerKey)
+	return ESX.Markers.Table[markerKey].isInside
 end
 
 local markerWait = 500
@@ -1150,7 +985,7 @@ CreateThread(function()
 		local pedCoords = GetEntityCoords(ped)
 		markerWait = 500
 		
-		for markerKey, marker in pairs(ExM.Markers.Table) do
+		for markerKey, marker in pairs(ESX.Markers.Table) do
 			if marker.deleteNow then
 				marker = nil
 			else

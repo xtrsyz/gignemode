@@ -1,6 +1,6 @@
 ESX.Trace = function(msg)
 	if Config.EnableDebug then
-		print(('[ExtendedMode] [^2TRACE^7] %s^7'):format(msg))
+		print(('[gigneMode] [^2TRACE^7] %s^7'):format(msg))
 	end
 end
 
@@ -30,7 +30,7 @@ ESX.RegisterCommand = function(name, group, cb, allowConsole, suggestion)
 	end
 
 	if ESX.RegisteredCommands[name] then
-		print(('[ExtendedMode] [^3WARNING^7] An command "%s" is already registered, overriding command'):format(name))
+		print(('[gigneMode] [^3WARNING^7] An command "%s" is already registered, overriding command'):format(name))
 
 		if ESX.RegisteredCommands[name].suggestion then
 			TriggerClientEvent('chat:removeSuggestion', -1, ('/%s'):format(name))
@@ -50,7 +50,7 @@ ESX.RegisterCommand = function(name, group, cb, allowConsole, suggestion)
 		local command = ESX.RegisteredCommands[name]
 
 		if not command.allowConsole and playerId == 0 then
-			print(('[ExtendedMode] [^3WARNING^7] %s'):format(_U('commanderror_console')))
+			print(('[gigneMode] [^3WARNING^7] %s'):format(_U('commanderror_console')))
 		else
 			local xPlayer, error = ESX.GetPlayerFromId(playerId), nil
 
@@ -122,14 +122,14 @@ ESX.RegisterCommand = function(name, group, cb, allowConsole, suggestion)
 
 			if error then
 				if playerId == 0 then
-					print(('[ExtendedMode] [^3WARNING^7] %s^7'):format(error))
+					print(('[gigneMode] [^3WARNING^7] %s^7'):format(error))
 				else
 					xPlayer.triggerEvent('chat:addMessage', {args = {'^1SYSTEM', error}})
 				end
 			else
 				cb(xPlayer or false, args, function(msg)
 					if playerId == 0 then
-						print(('[ExtendedMode] [^3WARNING^7] %s^7'):format(msg))
+						print(('[gigneMode] [^3WARNING^7] %s^7'):format(msg))
 					else
 						xPlayer.triggerEvent('chat:addMessage', {args = {'^1SYSTEM', msg}})
 					end
@@ -147,35 +147,46 @@ ESX.RegisterCommand = function(name, group, cb, allowConsole, suggestion)
 	end
 end
 
-ESX.ClearTimeout = function(id)
-	ESX.CancelledTimeouts[id] = true
-end
-
-ESX.RegisterServerCallback = function(name, cb)
-	ESX.ServerCallbacks[name] = cb
-end
+ESX.ClearTimeout = function(id) ESX.CancelledTimeouts[id] = true end
+ESX.GetServerCallbacks = function() return ESX.ServerCallbacks end
+ESX.RegisterServerCallback = function(name, cb) ESX.ServerCallbacks[name] = cb end
 
 ESX.TriggerServerCallback = function(name, requestId, source, cb, ...)
 	if ESX.ServerCallbacks[name] then
 		ESX.ServerCallbacks[name](source, cb, ...)
 	else
-		print(('[ExtendedMode] [^3WARNING^7] Server callback "%s" does not exist. Make sure that the server sided file really is loading, an error in that file might cause it to not load.'):format(name))
+		print(('[gigneMode] [^3WARNING^7] Server callback "%s" does not exist. Make sure that the server sided file really is loading, an error in that file might cause it to not load.'):format(name))
 	end
 end
 
 ESX.SavePlayer = function(xPlayer, cb)
-	if ExM.DatabaseType == "es+esx" then
+	if ESX.DatabaseType == "es+esx" then
 		-- Nothing yet ;)
-	elseif ExM.DatabaseType == "newesx" then
-		MySQL.Async.execute('UPDATE users SET accounts = @accounts, job = @job, job_grade = @job_grade, `group` = @group, loadout = @loadout, position = @position, inventory = @inventory WHERE identifier = @identifier', {
+	elseif ESX.DatabaseType == "newesx" then
+		MySQL.Async.execute([===[
+			UPDATE users SET 
+				`accounts` = @accounts, 
+				`job` = @job, job_grade = @job_grade, 
+				`groups` = @groups, 
+				`loadout` = @loadout, 
+				`position` = @position, 
+				`status` = @status, 
+				`health` = @health, 
+				`armour` = @armour, 
+				`inventory` = @inventory 
+			WHERE `identifier` = @identifier
+			]===], {
 			['@accounts'] = json.encode(xPlayer.getAccounts(true)),
 			['@job'] = xPlayer.job.name,
 			['@job_grade'] = xPlayer.job.grade,
-			['@group'] = xPlayer.getGroup(),
+			['@groups'] = json.encode(xPlayer.getGroups()),
 			['@loadout'] = json.encode(xPlayer.getLoadout(true)),
 			['@position'] = json.encode(xPlayer.getCoords()),
-			['@identifier'] = xPlayer.getIdentifier(),
-			['@inventory'] = json.encode(xPlayer.getInventory(true))
+			['@status'] = json.encode(xPlayer.getStatus()),
+			['@health'] = xPlayer.getHealth(),
+			['@armour'] = xPlayer.getArmour(),
+			['@inventory'] = json.encode(xPlayer.getInventory(true)),
+			['@identifier'] = xPlayer.getIdentifier()
 		}, cb)
 		ESX.SaveBatchs(xPlayer)
 	end
@@ -240,9 +251,9 @@ ESX.StartDBSync = function()
 	function saveData()
 		ESX.SavePlayers(function(result)
 			if result then
-				print('[ExtendedMode] [^2INFO^7] Automatically saved all player data')
+				print('[gigneMode] [^2INFO^7] Automatically saved all player data')
 			else
-				print('[ExtendedMode] [^3WARNING^7] Failed to automatically save player data! This may be caused by an internal error on the MySQL server.')
+				print('[gigneMode] [^3WARNING^7] Failed to automatically save player data! This may be caused by an internal error on the MySQL server.')
 			end
 		end)
 		SetTimeout(Config.SaveDataInterval, saveData)
@@ -261,9 +272,7 @@ ESX.GetPlayers = function()
 	return sources
 end
 
-ESX.GetPlayerFromId = function(source)
-	return ESX.Players[tonumber(source)]
-end
+ESX.GetPlayerFromId = function(source) return ESX.Players[tonumber(source)] end
 
 ESX.GetPlayerFromIdentifier = function(identifier)
 	for k,v in pairs(ESX.Players) do
@@ -273,26 +282,22 @@ ESX.GetPlayerFromIdentifier = function(identifier)
 	end
 end
 
-ESX.RegisterUsableItem = function(item, cb)
-	ESX.UsableItemsCallbacks[item] = cb
-end
+ESX.RegisterUsableItem = function(item, cb) ESX.UsableItemsCallbacks[item] = cb end
 
 ESX.UseItem = function(source, item, batchNumber)
-	ESX.UsableItemsCallbacks[item](source, batchNumber)
-end
-
-ESX.GetItemLabel = function(item)
-	if ESX.Items[item] then
-		return ESX.Items[item].label
+	if ESX.UsableItemsCallbacks[item] then
+		ESX.UsableItemsCallbacks[item](source, batchNumber)
 	end
 end
+
+ESX.GetItemLabel = function(item) return ESX.Items[item] and ESX.Items[item].label or 'Unknown' end
 
 ESX.CreatePickup = function(type, name, count, label, playerId, components, tintIndex, batchInfo)
     local pickupId = (ESX.PickupId == 65635 and 0 or ESX.PickupId + 1)
     local xPlayer = ESX.GetPlayerFromId(playerId)
     local pedCoords
     
-    if ExM.IsInfinity then
+    if ESX.IsInfinity then
         pedCoords = GetEntityCoords(GetPlayerPed(playerId))
     end
 
@@ -310,7 +315,7 @@ ESX.CreatePickup = function(type, name, count, label, playerId, components, tint
         ESX.Pickups[pickupId].tintIndex = tintIndex
     end
 
-    TriggerClientEvent('esx:createPickup', -1, pickupId, label, playerId, type, name, components, tintIndex, ExM.IsInfinity, pedCoords)
+    TriggerClientEvent('esx:createPickup', -1, pickupId, label, playerId, type, name, components, tintIndex, ESX.IsInfinity, pedCoords)
     ESX.PickupId = pickupId
 end
 
@@ -326,21 +331,22 @@ ESX.DoesJobExist = function(job, grade)
 	return false
 end
 
-if ExM.IsOneSync then
-	ExM.Game = {}
+ESX.GetJobs = function() return ESX.Jobs end
+ESX.GetItems = function() return ESX.Items end
 
-	ExM.Game.SpawnVehicle = function(model, coords)
+if ESX.IsOneSync then
+	ESX.Game.SpawnVehicle = function(model, coords)
 		local vector = type(coords) == "vector4" and coords or type(coords) == "vector3" and vector4(coords, 0.0)
 		return CreateVehicle(model, vector.xyzw, true, false)
 	end
 
-	ExM.Game.CreatePed = function(pedModel, pedCoords, pedType)
+	ESX.Game.CreatePed = function(pedModel, pedCoords, pedType)
 		local vector = type(pedCoords) == "vector4" and pedCoords or type(pedCoords) == "vector3" and vector4(pedCoords, 0.0)
 		pedType = pedType ~= nil and pedType or 4
 		return CreatePed(pedType, pedModel, vector.xyzw, true)
 	end
 
-	ExM.Game.SpawnObject = function(model, coords, dynamic)
+	ESX.Game.SpawnObject = function(model, coords, dynamic)
 		model = type(model) == 'number' and model or GetHashKey(model)
 		dynamic = dynamic ~= nil and true or false
 		return CreateObjectNoOffset(model, coords.xyz, true, dynamic)
@@ -394,4 +400,219 @@ ESX.RandomString = function(length)
 	end
 	math.randomseed(os.clock()^5)
 	return ESX.RandomString(length - 1) .. charset[math.random(1, #charset)]
+end
+
+ESX.Game.GetVehicleProperties = function(entityHandle)
+	if DoesEntityExist(entityHandle) then
+		local colorPrimary, colorSecondary = GetVehicleColours(entityHandle)
+		local pearlescentColor, wheelColor = GetVehicleExtraColours(entityHandle)
+
+		--[[
+		local vehicleModel = GetEntityModel(entityHandle)
+		local vehicleLabel, extras = GetLabelText(GetDisplayNameFromVehicleModel(vehicleModel)), {}
+
+		if vehicleLabel == 'NULL' then vehicleLabel = GetDisplayNameFromVehicleModel(vehicleModel) end
+
+		for extraId=0, 12 do
+			if DoesExtraExist(entityHandle, extraId) then
+				local state = IsVehicleExtraTurnedOn(entityHandle, extraId) == 1
+				extras[tostring(extraId)] = state
+			end
+		end
+		]]
+
+		return {
+			model             = vehicleModel,
+			--label             = vehicleLabel,
+			label             = 'Unknown Vehicle Label',
+
+			plate             = ESX.Math.Trim(GetVehicleNumberPlateText(entityHandle)),
+			plateIndex        = GetVehicleNumberPlateTextIndex(entityHandle),
+
+			bodyHealth        = math.round(GetVehicleBodyHealth(entityHandle), 1),
+			engineHealth      = math.round(GetVehicleEngineHealth(entityHandle), 1),
+			petrolTankHealth  = math.round(GetVehiclePetrolTankHealth(entityHandle), 1),
+
+			--fuelLevel         = math.round(GetVehicleFuelLevel(entityHandle), 1),
+			dirtLevel         = math.round(GetVehicleDirtLevel(entityHandle), 1),
+			color1            = colorPrimary,
+			color2            = colorSecondary,
+
+			pearlescentColor  = pearlescentColor,
+			wheelColor        = wheelColor,
+
+			wheels            = GetVehicleWheelType(entityHandle),
+			windowTint        = GetVehicleWindowTint(entityHandle),
+
+			--[[
+			xenonColor        = GetVehicleXenonLightsColour(entityHandle),
+
+			neonEnabled       = {
+				IsVehicleNeonLightEnabled(entityHandle, 0),
+				IsVehicleNeonLightEnabled(entityHandle, 1),
+				IsVehicleNeonLightEnabled(entityHandle, 2),
+				IsVehicleNeonLightEnabled(entityHandle, 3)
+			},
+
+			neonColor         = {GetVehicleNeonLightsColour(entityHandle)},
+			extras            = extras,
+			tyreSmokeColor    = {GetVehicleTyreSmokeColor(entityHandle)},
+
+			modSpoilers       = GetVehicleMod(entityHandle, 0),
+			modFrontBumper    = GetVehicleMod(entityHandle, 1),
+			modRearBumper     = GetVehicleMod(entityHandle, 2),
+			modSideSkirt      = GetVehicleMod(entityHandle, 3),
+			modExhaust        = GetVehicleMod(entityHandle, 4),
+			modFrame          = GetVehicleMod(entityHandle, 5),
+			modGrille         = GetVehicleMod(entityHandle, 6),
+			modHood           = GetVehicleMod(entityHandle, 7),
+			modFender         = GetVehicleMod(entityHandle, 8),
+			modRightFender    = GetVehicleMod(entityHandle, 9),
+			modRoof           = GetVehicleMod(entityHandle, 10),
+
+			modEngine         = GetVehicleMod(entityHandle, 11),
+			modBrakes         = GetVehicleMod(entityHandle, 12),
+			modTransmission   = GetVehicleMod(entityHandle, 13),
+			modHorns          = GetVehicleMod(entityHandle, 14),
+			modSuspension     = GetVehicleMod(entityHandle, 15),
+			modArmor          = GetVehicleMod(entityHandle, 16),
+
+			modTurbo          = IsToggleModOn(entityHandle, 18),
+			modSmokeEnabled   = IsToggleModOn(entityHandle, 20),
+			modXenon          = IsToggleModOn(entityHandle, 22),
+
+			modFrontWheels    = GetVehicleMod(entityHandle, 23),
+			modBackWheels     = GetVehicleMod(entityHandle, 24),
+
+			modPlateHolder    = GetVehicleMod(entityHandle, 25),
+			modVanityPlate    = GetVehicleMod(entityHandle, 26),
+			modTrimA          = GetVehicleMod(entityHandle, 27),
+			modOrnaments      = GetVehicleMod(entityHandle, 28),
+			modDashboard      = GetVehicleMod(entityHandle, 29),
+			modDial           = GetVehicleMod(entityHandle, 30),
+			modDoorSpeaker    = GetVehicleMod(entityHandle, 31),
+			modSeats          = GetVehicleMod(entityHandle, 32),
+			modSteeringWheel  = GetVehicleMod(entityHandle, 33),
+			modShifterLeavers = GetVehicleMod(entityHandle, 34),
+			modAPlate         = GetVehicleMod(entityHandle, 35),
+			modSpeakers       = GetVehicleMod(entityHandle, 36),
+			modTrunk          = GetVehicleMod(entityHandle, 37),
+			modHydrolic       = GetVehicleMod(entityHandle, 38),
+			modEngineBlock    = GetVehicleMod(entityHandle, 39),
+			modAirFilter      = GetVehicleMod(entityHandle, 40),
+			modStruts         = GetVehicleMod(entityHandle, 41),
+			modArchCover      = GetVehicleMod(entityHandle, 42),
+			modAerials        = GetVehicleMod(entityHandle, 43),
+			modTrimB          = GetVehicleMod(entityHandle, 44),
+			modTank           = GetVehicleMod(entityHandle, 45),
+			modWindows        = GetVehicleMod(entityHandle, 46),
+			modStandardLivery = GetVehicleMod(entityHandle, 48),
+			]]
+			modLivery         = GetVehicleLivery(entityHandle),
+			--bulletProofTyres  = not GetVehicleTyresCanBurst(entityHandle)
+		}
+	else
+		return
+	end
+end
+
+-- https://raw.githubusercontent.com/citizenfx/fivem/master/ext/natives/rpc_spec_natives.lua RPC native list
+
+ESX.Game.SetVehicleProperties = function(entityHandle, props)
+	if DoesEntityExist(entityHandle) then
+		local colorPrimary, colorSecondary = GetVehicleColours(entityHandle)
+		local pearlescentColor, wheelColor = GetVehicleExtraColours(entityHandle)
+		--SetVehicleModKit(entityHandle, 0)
+
+		if props.plate then SetVehicleNumberPlateText(entityHandle, props.plate) end -- rpc native
+		--if props.plateIndex then SetVehicleNumberPlateTextIndex(entityHandle, props.plateIndex) end
+		if props.bodyHealth then SetVehicleBodyHealth(entityHandle, props.bodyHealth + 0.0) end -- rpc native
+		--if props.engineHealth then SetVehicleEngineHealth(entityHandle, props.engineHealth + 0.0) end
+		--if props.petrolTankHealth then SetVehiclePetrolTankHealth(entityHandle, props.petrolTankHealth + 0.0) end
+
+		if props.fuelLevel then
+			--SetVehicleFuelLevel(entityHandle, props.fuelLevel + 0.0)
+			--DecorSetFloat(entityHandle, "_FUEL_LEVEL", props.fuelLevel + 0.0) --need this for LegacyFuel setup
+		end
+
+		if props.dirtLevel then SetVehicleDirtLevel(entityHandle, props.dirtLevel + 0.0) end -- rpc native
+		if props.color1 then SetVehicleColours(entityHandle, props.color1, colorSecondary) end -- rpc native
+		if props.color2 then SetVehicleColours(entityHandle, props.color1 or colorPrimary, props.color2) end -- rpc native
+
+		--[[
+			--if props.pearlescentColor then SetVehicleExtraColours(entityHandle, props.pearlescentColor, wheelColor) end
+			--if props.wheelColor then SetVehicleExtraColours(entityHandle, props.pearlescentColor or pearlescentColor, props.wheelColor) end
+			--if props.wheels then SetVehicleWheelType(entityHandle, props.wheels) end
+			--if props.windowTint then SetVehicleWindowTint(entityHandle, props.windowTint) end
+
+			if props.neonEnabled then
+				SetVehicleNeonLightEnabled(entityHandle, 0, props.neonEnabled[1])
+				SetVehicleNeonLightEnabled(entityHandle, 1, props.neonEnabled[2])
+				SetVehicleNeonLightEnabled(entityHandle, 2, props.neonEnabled[3])
+				SetVehicleNeonLightEnabled(entityHandle, 3, props.neonEnabled[4])
+			end
+
+			if props.extras then
+				for extraId,enabled in pairs(props.extras) do
+					if enabled then
+						SetVehicleExtra(entityHandle, tonumber(extraId), 0)
+					else
+						SetVehicleExtra(entityHandle, tonumber(extraId), 1)
+					end
+				end
+			end
+
+			if props.bulletProofTyres ~= nil then SetVehicleTyresCanBurst(entityHandle, not props.bulletProofTyres) end
+			if props.neonColor then SetVehicleNeonLightsColour(entityHandle, props.neonColor[1], props.neonColor[2], props.neonColor[3]) end
+			if props.xenonColor then SetVehicleXenonLightsColour(entityHandle, props.xenonColor) end
+			if props.modSmokeEnabled then ToggleVehicleMod(entityHandle, 20, true) end
+			if props.tyreSmokeColor then SetVehicleTyreSmokeColor(entityHandle, props.tyreSmokeColor[1], props.tyreSmokeColor[2], props.tyreSmokeColor[3]) end
+			if props.modSpoilers then SetVehicleMod(entityHandle, 0, props.modSpoilers, false) end
+			if props.modFrontBumper then SetVehicleMod(entityHandle, 1, props.modFrontBumper, false) end
+			if props.modRearBumper then SetVehicleMod(entityHandle, 2, props.modRearBumper, false) end
+			if props.modSideSkirt then SetVehicleMod(entityHandle, 3, props.modSideSkirt, false) end
+			if props.modExhaust then SetVehicleMod(entityHandle, 4, props.modExhaust, false) end
+			if props.modFrame then SetVehicleMod(entityHandle, 5, props.modFrame, false) end
+			if props.modGrille then SetVehicleMod(entityHandle, 6, props.modGrille, false) end
+			if props.modHood then SetVehicleMod(entityHandle, 7, props.modHood, false) end
+			if props.modFender then SetVehicleMod(entityHandle, 8, props.modFender, false) end
+			if props.modRightFender then SetVehicleMod(entityHandle, 9, props.modRightFender, false) end
+			if props.modRoof then SetVehicleMod(entityHandle, 10, props.modRoof, false) end
+			if props.modEngine then SetVehicleMod(entityHandle, 11, props.modEngine, false) end
+			if props.modBrakes then SetVehicleMod(entityHandle, 12, props.modBrakes, false) end
+			if props.modTransmission then SetVehicleMod(entityHandle, 13, props.modTransmission, false) end
+			if props.modHorns then SetVehicleMod(entityHandle, 14, props.modHorns, false) end
+			if props.modSuspension then SetVehicleMod(entityHandle, 15, props.modSuspension, false) end
+			if props.modArmor then SetVehicleMod(entityHandle, 16, props.modArmor, false) end
+			if props.modTurbo then ToggleVehicleMod(entityHandle,  18, props.modTurbo) end
+			if props.modXenon then ToggleVehicleMod(entityHandle,  22, props.modXenon) end
+			if props.modFrontWheels then SetVehicleMod(entityHandle, 23, props.modFrontWheels, false) end
+			if props.modBackWheels then SetVehicleMod(entityHandle, 24, props.modBackWheels, false) end
+			if props.modPlateHolder then SetVehicleMod(entityHandle, 25, props.modPlateHolder, false) end
+			if props.modVanityPlate then SetVehicleMod(entityHandle, 26, props.modVanityPlate, false) end
+			if props.modTrimA then SetVehicleMod(entityHandle, 27, props.modTrimA, false) end
+			if props.modOrnaments then SetVehicleMod(entityHandle, 28, props.modOrnaments, false) end
+			if props.modDashboard then SetVehicleMod(entityHandle, 29, props.modDashboard, false) end
+			if props.modDial then SetVehicleMod(entityHandle, 30, props.modDial, false) end
+			if props.modDoorSpeaker then SetVehicleMod(entityHandle, 31, props.modDoorSpeaker, false) end
+			if props.modSeats then SetVehicleMod(entityHandle, 32, props.modSeats, false) end
+			if props.modSteeringWheel then SetVehicleMod(entityHandle, 33, props.modSteeringWheel, false) end
+			if props.modShifterLeavers then SetVehicleMod(entityHandle, 34, props.modShifterLeavers, false) end
+			if props.modAPlate then SetVehicleMod(entityHandle, 35, props.modAPlate, false) end
+			if props.modSpeakers then SetVehicleMod(entityHandle, 36, props.modSpeakers, false) end
+			if props.modTrunk then SetVehicleMod(entityHandle, 37, props.modTrunk, false) end
+			if props.modHydrolic then SetVehicleMod(entityHandle, 38, props.modHydrolic, false) end
+			if props.modEngineBlock then SetVehicleMod(entityHandle, 39, props.modEngineBlock, false) end
+			if props.modAirFilter then SetVehicleMod(entityHandle, 40, props.modAirFilter, false) end
+			if props.modStruts then SetVehicleMod(entityHandle, 41, props.modStruts, false) end
+			if props.modArchCover then SetVehicleMod(entityHandle, 42, props.modArchCover, false) end
+			if props.modAerials then SetVehicleMod(entityHandle, 43, props.modAerials, false) end
+			if props.modTrimB then SetVehicleMod(entityHandle, 44, props.modTrimB, false) end
+			if props.modTank then SetVehicleMod(entityHandle, 45, props.modTank, false) end
+			if props.modWindows then SetVehicleMod(entityHandle, 46, props.modWindows, false) end
+
+			if props.modLivery then SetVehicleLivery(entityHandle, props.modLivery) end
+			if props.modStandardLivery then SetVehicleMod(entityHandle, 48, props.modStandardLivery, false) end
+		]]
+	end
 end

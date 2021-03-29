@@ -1,7 +1,18 @@
 RegisterNetEvent('esx:onPlayerJoined')
 AddEventHandler('esx:onPlayerJoined', function()
-	if not ESX.Players[source] then
-		onPlayerJoined(source)
+	local playerId = source
+	local xPlayer = ESX.GetPlayerFromId(playerId)
+
+	if xPlayer then
+		print(('[ESX] [^3WARNING^7] Player id "%s^7" who already is connected has been called ^3onPlayerJoined^7 on. ' ..
+			'Will save player and query new character from database.'):format(playerId))
+
+		ESX.SavePlayer(xPlayer, function()
+			ESX.Players[playerId] = nil
+			onPlayerJoined(playerId)
+		end)
+	else
+		onPlayerJoined(playerId)
 	end
 end)
 
@@ -62,9 +73,9 @@ AddEventHandler('playerConnecting', function(name, setCallback, deferrals)
 		end
 	end
 
-	if not ExM.DatabaseReady then
+	if not ESX.DatabaseReady then
 		deferrals.update("The database is not initialized, please wait...")
-		while not ExM.DatabaseReady do
+		while not ESX.DatabaseReady do
 			Wait(1000)
 		end
 	end
@@ -86,6 +97,8 @@ function loadESXPlayer(identifier, playerId)
 	local batch = {}
 	local batchCount = {}
 	local userData = {
+		playerId = PlayerId,
+		identifier = identifier,
 		accounts = {},
 		inventory = {},
 		job = {},
@@ -111,11 +124,38 @@ function loadESXPlayer(identifier, playerId)
 	end)
 
 	table.insert(tasks, function(cb)
-		MySQL.Async.fetchAll('SELECT accounts, job, job_grade, `group`, loadout, position, inventory FROM users WHERE identifier = @identifier', {
+		MySQL.Async.fetchAll([===[
+			SELECT accounts, job, job_grade, groups, loadout, position, inventory,
+				name, skin, status, health, armour
+			FROM users 
+			WHERE identifier = @identifier
+		]===], {
 			['@identifier'] = identifier
 		}, function(result)
 			local job, grade, jobObject, gradeObject = result[1].job, tostring(result[1].job_grade)
 			local foundAccounts, foundItems = {}, {}
+
+			userData.name = result[1].name
+			userData.health = result[1].health
+			userData.armour = result[1].armour
+
+			-- Skin
+			if result[1].skin and result[1].skin ~= '' then
+				local skin = json.decode(result[1].skin)
+
+				if skin then
+					userData.skin = skin
+				end
+			end
+
+			-- Status
+			if result[1].status and result[1].status ~= '' then
+				local status = json.decode(result[1].status)
+
+				if status then
+					userData.status = status
+				end
+			end
 
 			-- Accounts
 			if result[1].accounts and result[1].accounts ~= '' then
@@ -138,7 +178,7 @@ function loadESXPlayer(identifier, playerId)
 			if ESX.DoesJobExist(job, grade) then
 				jobObject, gradeObject = ESX.Jobs[job], ESX.Jobs[job].grades[grade]
 			else
-				print(('[ExtendedMode] [^3WARNING^7] Ignoring invalid job for %s [job: %s, grade: %s]'):format(identifier, job, grade))
+				print(('[gigneMode] [^3WARNING^7] Ignoring invalid job for %s [job: %s, grade: %s]'):format(identifier, job, grade))
 				job, grade = 'unemployed', '0'
 				jobObject, gradeObject = ESX.Jobs[job], ESX.Jobs[job].grades[grade]
 			end
@@ -168,7 +208,7 @@ function loadESXPlayer(identifier, playerId)
 					if item then
 						foundItems[name] = count
 					else
-						print(('[ExtendedMode] [^3WARNING^7] Ignoring invalid item "%s" for "%s"'):format(name, identifier))
+						print(('[gigneMode] [^3WARNING^7] Ignoring invalid item "%s" for "%s"'):format(name, identifier))
 					end
 				end
 			end
@@ -191,11 +231,12 @@ function loadESXPlayer(identifier, playerId)
 				return a.label < b.label
 			end)
 
-			-- Group
-			if result[1].group then
-				userData.group = result[1].group
+			-- Groups
+			if result[1].groups and result[1].groups ~= '' then
+				local groups = json.decode(result[1].groups)
+				userData.groups = groups
 			else
-				userData.group = 'user'
+				userData.groups = {['user'] = true}
 			end
 
 			-- Loadout
@@ -226,7 +267,7 @@ function loadESXPlayer(identifier, playerId)
 			if result[1].position and result[1].position ~= '' then
 				userData.coords = json.decode(result[1].position)
 			else
-				print('[ExtendedMode] [^3WARNING^7] Column "position" in "users" table is missing required default value. Using backup coords, fix your database.')
+				print('[gigneMode] [^3WARNING^7] Column "position" in "users" table is missing required default value. Using backup coords, fix your database.')
 				userData.coords = Config.FirstSpawnCoords
 			end
 
@@ -252,19 +293,22 @@ function loadESXPlayer(identifier, playerId)
 		TriggerEvent('esx:playerLoaded', playerId, xPlayer)
 
 		xPlayer.triggerEvent('esx:playerLoaded', {
-			accounts = xPlayer.getAccounts(),
+			inventory = xPlayer.getInventory(false, true),
+			maxWeight = xPlayer.getMaxWeight(),
+			loadout = xPlayer.getLoadout(),
+			accounts = xPlayer.getAccounts(false, true),
 			coords = xPlayer.getCoords(),
 			identifier = xPlayer.getIdentifier(),
-			inventory = xPlayer.getInventory(),
 			job = xPlayer.getJob(),
-			loadout = xPlayer.getLoadout(),
-			maxWeight = xPlayer.getMaxWeight(),
-			money = xPlayer.getMoney()
+			money = xPlayer.getMoney(), -- deprecated
+			skin = xPlayer.getSkin(),
+			status = xPlayer.getStatus()
 		})
 
+		xPlayer.triggerEvent('esx:setGroups', userData.groups)
 		xPlayer.triggerEvent('esx:createMissingPickups', ESX.Pickups)
 		xPlayer.triggerEvent('esx:registerSuggestions', ESX.RegisteredCommands)
-		print(('[ExtendedMode] [^2INFO^7] A player with name "%s^7" has connected to the server with assigned player id %s'):format(xPlayer.getName(), playerId))
+		print(('[gigneMode] [^2INFO^7] A player with name "%s^7" has connected to the server with assigned player id %s'):format(xPlayer.getName(), playerId))
 	end)
 end
 
@@ -335,6 +379,17 @@ AddEventHandler('esx:updateCoords', function(coords)
 
 	if xPlayer then
 		xPlayer.updateCoords(coords)
+	end
+end)
+
+RegisterNetEvent('esx:updateHealth')
+AddEventHandler('esx:updateHealth', function(health, armour)
+	local xPlayer = ESX.GetPlayerFromId(source)
+
+	if xPlayer then
+		if type(health) == 'number' and type(armour) == 'number' then
+			xPlayer.updateHealth(health, armour)
+		end
 	end
 end)
 
@@ -611,6 +666,11 @@ ESX.RegisterServerCallback('esx:getPlayerNames', function(source, cb, players)
 	end
 
 	cb(players)
+end)
+
+ESX.RegisterServerCallback('esx:spawnVehicle', function(playerId, cb, model, coords, heading)
+	local entityHandle = Citizen.InvokeNative(GetHashKey('CREATE_AUTOMOBILE'), model, coords, heading)
+	cb(NetworkGetNetworkIdFromEntity(entityHandle))
 end)
 
 AddEventHandler("esx:setAccountMoney", function(user, value, detail) ESX.GetPlayerFromId(user).setAccountMoney(value, detail) end)

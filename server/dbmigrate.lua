@@ -8,7 +8,7 @@ RegisterCommand("migratedb", function(source, args)
 	if source == 0 then
 		if not migrationRunning then
 			if startMigrate then
-				if ExM.DatabaseType == "newesx" then
+				if ESX.DatabaseType == "newesx" then
 					initiateMigration()
 				else
 					print("^8----------------------------------------------------------------------------------^0")

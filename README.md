@@ -1,5 +1,5 @@
-# extendedmode
-extendedmode is a community edition fork of es_extended (better known as ESX) and will be maintained by various trusted members of the FiveM community.
+# gignemode
+gignemode is a community edition fork of es_extended (better known as ESX) and will be maintained by various trusted members of the FiveM community.
 
 ## Primary goals for this project
 - Allow even versions of ESX scripts pre 1.2 to continue to function with as few edits as possible.
@@ -12,13 +12,13 @@ ESX was initially developed by Gizz back in 2017 for his friend as the were crea
 
 ## Using
 
-Be warned that extendedmode is in ALPHA stages and is **not** ready for production use.
+Be warned that gignemode is in ALPHA stages and is **not** ready for production use.
 
 If you already have an ESX installation please see [this]() guide! (coming soon!)
 
 ## Links & Read more
 
-- [Full Documentation](https://extendedmode.github.io) (Work in Progress!)
+- [Full Documentation](https://gignemode.github.io) (Work in Progress!)
 - [ESX Migration Guide]() (coming soon!)
 - [FiveM Native Reference](https://runtime.fivem.net/doc/reference.html)
 - [ExM Discord] (http://discord.gg/qKYBQH8)
@@ -35,9 +35,16 @@ If you already have an ESX installation please see [this]() guide! (coming soon!
 - Easy to use API for developers to easily integrate EX to their projects
 - Register your own commands easily, with argument validation, chat suggestion and using FXServer ACL
 
-We have also made some exclusive features for extendedmode only, find them all [here](https://extendedmode.github.io/functions/Client%20Functions/)!
+We have also made some exclusive features for gignemode only, find them all [here](https://gignemode.github.io/functions/Client%20Functions/)!
 
 ## Requirements
+
+```bash
+add_ace resource.gignemode command.add_ace allow
+add_ace resource.gignemode command.add_principal allow
+add_ace resource.gignemode command.remove_principal allow
+add_ace resource.gignemode command.stop allow
+```
 
 - A fully configured installation of [mysql-async](https://github.com/brouznouf/fivem-mysql-async) (or equivalent)
 
@@ -54,7 +61,7 @@ When contributing code, it's important to include a short summary of what the co
 
 ### Licenses
 
-#### extendedmode - es_extended community fork
+#### gignemode - es_extended community fork
 
 All changes after 04/04/2020 are provided by their respective authors under the GNUGPLv3 license.
 

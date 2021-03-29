@@ -13,58 +13,54 @@ end)
 
 RegisterNetEvent('esx:playerLoaded')
 AddEventHandler('esx:playerLoaded', function(playerData)
-	ESX.PlayerLoaded = true
 	ESX.PlayerData = playerData
 	
 	-- Removed some unnecessary statement here checking if you were Michael, it did nothing really.
 	-- Was also kind of broken because anyone who has a SP save no using Michael wouldn't even get it.
+	RequestModel(Config.DefaultPlayerModel)
+	while not HasModelLoaded(Config.DefaultPlayerModel) do Citizen.Wait(100) end
 
 	local playerPed = PlayerPedId()
+
+	FreezeEntityPosition(playerPed, true)
+
+	-- change the player model
+	SetPlayerModel(PlayerId(), Config.DefaultPlayerModel)
+
+	-- release the player model
+	SetModelAsNoLongerNeeded(Config.DefaultPlayerModel)
 
 	if Config.EnablePvP then
 		SetCanAttackFriendly(playerPed, true, false)
 		NetworkSetFriendlyFireOption(true)
 	end
 
-	if Config.EnableHud then
-		for k,v in ipairs(playerData.accounts) do
-			local accountTpl = '<div><img src="img/accounts/' .. v.name .. '.png"/>&nbsp;{{money}}</div>'
-			ESX.UI.HUD.RegisterElement('account_' .. v.name, k, 0, accountTpl, {money = ESX.Math.GroupDigits(v.money)})
-		end
-
-		local jobTpl = '<div>{{job_label}} - {{grade_label}}</div>'
-
-		if playerData.job.grade_label == '' or playerData.job.grade_label == playerData.job.label then
-			jobTpl = '<div>{{job_label}}</div>'
-		end
-
-		ESX.UI.HUD.RegisterElement('job', #playerData.accounts, 0, jobTpl, {
-			job_label = playerData.job.label,
-			grade_label = playerData.job.grade_label
-		})
-	end
-
-	-- Using spawnmanager now to spawn the player, this is the right way to do it, and it transitions better.
-	exports.spawnmanager:spawnPlayer({
+	ESX.Game.Teleport(PlayerPedId(), {
 		x = playerData.coords.x,
 		y = playerData.coords.y,
-		z = playerData.coords.z,
-		heading = playerData.coords.heading,
-		model = Config.DefaultPlayerModel,
-		skipFade = true
+		z = playerData.coords.z + 0.25,
+		heading = playerData.coords.heading
 	}, function()
 		TriggerServerEvent('esx:onPlayerSpawn')
 		TriggerEvent('esx:onPlayerSpawn')
 		TriggerEvent('esx:restoreLoadout')
+		TriggerEvent('playerSpawned') -- compatibility with old scripts, will be removed soon
+
+		Citizen.Wait(3000)
+		ShutdownLoadingScreen()
+		FreezeEntityPosition(PlayerPedId(), false)
+		DoScreenFadeIn(10000)
+		ESX.PlayerLoaded = true
 		StartServerSyncLoops()
-	end)
+	end, true)
 	TriggerEvent('esx:loadingScreenOff')
 end)
 
-RegisterNetEvent('es:activateMoney')
-AddEventHandler('es:activateMoney', function(money)
-	ESX.PlayerData.money = money
-end)
+RegisterNetEvent('esx:setName')
+AddEventHandler('esx:setName', function(newName) ESX.SetPlayerData('name', newName) end)
+
+RegisterNetEvent('esx:setGroups')
+AddEventHandler('esx:setGroups', function(groups) ESX.PlayerData.groups = groups end)
 
 RegisterNetEvent('esx:setMaxWeight')
 AddEventHandler('esx:setMaxWeight', function(newMaxWeight) ESX.PlayerData.maxWeight = newMaxWeight end)
@@ -144,7 +140,7 @@ AddEventHandler('esx:addInventoryItem', function(item, count, showNotification, 
 		ESX.UI.ShowInventoryItemNotification(true, newItem.label, count)
 	else
 		-- Don't show this error for now
-		-- print("^1[ExtendedMode]^7 Error: there is an error while trying to add an item to the inventory, item name: " .. item)
+		-- print("^1[gigneMode]^7 Error: there is an error while trying to add an item to the inventory, item name: " .. item)
 	end
 
 	if showNotification then
@@ -488,7 +484,7 @@ CreateThread(function()
 
 								local dict, anim = 'weapons@first_person@aim_rng@generic@projectile@sticky_bomb@', 'plant_floor'
 								-- Lets use our new function instead of manually doing it
-								ExM.Game.PlayAnim(dict, anim, true, 1000)
+								ESX.Game.PlayAnim(dict, anim, true, 1000)
 								Wait(1000)
 
 								TriggerServerEvent('esx:onPickup', pickupId)
@@ -551,8 +547,8 @@ function StartServerSyncLoops()
 
 				if distance > 1 then
 					previousCoords = playerCoords
-					local playerHeading = ESX.Math.Round(GetEntityHeading(playerPed), 1)
-					local formattedCoords = {x = ESX.Math.Round(playerCoords.x, 1), y = ESX.Math.Round(playerCoords.y, 1), z = ESX.Math.Round(playerCoords.z, 1), heading = playerHeading}
+					local playerHeading = math.round(GetEntityHeading(playerPed), 1)
+					local formattedCoords = {x = math.round(playerCoords.x, 1), y = math.round(playerCoords.y, 1), z = math.round(playerCoords.z, 1), heading = playerHeading}
 					TriggerServerEvent('esx:updateCoords', formattedCoords)
 				end
 			end

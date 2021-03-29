@@ -1,4 +1,5 @@
 ESX = {}
+ESX.Game = {}
 ESX.Players = {}
 ESX.UsableItemsCallbacks = {}
 ESX.Items = {}
@@ -11,10 +12,10 @@ ESX.Jobs = {}
 ESX.RegisteredCommands = {}
 ESX.LastInventory = {}
 
--- Add a seperate table for ExtendedMode functions, but using metatables to limit feature usage on the ESX table
+-- Add a seperate table for gigneMode functions, but using metatables to limit feature usage on the ESX table
 -- This is to provide backward compatablity with ESX but not add new features to the old ESX tables.
 -- Note: Please add all new namespaces to ExM _after_ this block
-do
+--[[do
     local function processTable(thisTable)
         local thisObject = setmetatable({}, {
             __index = thisTable
@@ -27,38 +28,29 @@ do
         return thisObject
     end
     ExM = processTable(ESX)
-end
+end--]]
 
-AddEventHandler('esx:getSharedObject', function(cb)
-	cb(ESX)
-end)
-
-exports("getSharedObject", function()
-	return ESX
-end)
-
-exports("getExtendedModeObject", function()
-	return ExM
-end)
+AddEventHandler('esx:getSharedObject', function(cb) cb(ESX) end)
+exports('getSharedObject', function() return ESX end)
 
 -- Globals to check if OneSync or Infinity for exclusive features
-ExM.IsOneSync = GetConvar('onesync_enabled', false) == 'true'
-ExM.IsInfinity = GetConvar('onesync_enableInfinity', false) == 'true'
+ESX.IsOneSync = GetConvar('onesync_enabled', false) == 'true'
+ESX.IsInfinity = GetConvar('onesync_enableInfinity', false) == 'true'
 
-ExM.DatabaseReady = false
-ExM.DatabaseType = nil
+ESX.DatabaseReady = false
+ESX.DatabaseType = nil
 
-print('[ExtendedMode] [^2INFO^7] Starting up...')
+print('[gigneMode] [^2INFO^7] Starting up...')
 
 MySQL.ready(function()
-	print('[ExtendedMode] [^2INFO^7] Checking your database...')
+	print('[gigneMode] [^2INFO^7] Checking your database...')
 	
 	-- Check the information schema for the tables that match the esx ones
 	MySQL.Async.fetchAll("SELECT TABLE_NAME AS 't', COLUMN_NAME AS 'c' FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'users' or TABLE_NAME = 'user_inventory' or TABLE_NAME = 'user_accounts'", {}, function(informationSchemaResult)
 		local databaseCheckFunction = function()
 			-- Ensure we have a result that we can iterate
 			if type(informationSchemaResult) ~= "table" then
-				print('[ExtendedMode] [^1ERROR^7] Your database is not compatible with ExtendedMode!\nIf this is a fresh installation, you may have forgotten to import the SQL template.')
+				print('[gigneMode] [^1ERROR^7] Your database is not compatible with gigneMode!\nIf this is a fresh installation, you may have forgotten to import the SQL template.')
 				error()
 			end
 
@@ -71,32 +63,32 @@ MySQL.ready(function()
 
 			-- Check for invalid scenarios
 			if not tableMatchings["users"] then
-				print("[ExtendedMode] [^1ERROR^7] Your database is not compatible with ExtendedMode!\nYou do not have a users table. Please import the SQL template found in the resource directory.")
+				print("[gigneMode] [^1ERROR^7] Your database is not compatible with gigneMode!\nYou do not have a users table. Please import the SQL template found in the resource directory.")
 				error()
 			else
 				if tableMatchings["users"]["inventory"] and tableMatchings["users"]["accounts"] then
-					ExM.DatabaseType = "newesx"
+					ESX.DatabaseType = "newesx"
 				elseif tableMatchings["user_inventory"] and tableMatchings["user_accounts"] then
-					ExM.DatabaseType = "es+esx"
+					ESX.DatabaseType = "es+esx"
 				else
-					print("[ExtendedMode] [^1ERROR^7] Your database is not compatible with ExtendedMode!\nYou do not have anywhere for either the inventory or account info to be stored.\nRe-importing the SQL template may fix this!")
+					print("[gigneMode] [^1ERROR^7] Your database is not compatible with gigneMode!\nYou do not have anywhere for either the inventory or account info to be stored.\nRe-importing the SQL template may fix this!")
 					error()
 				end
 			end
 
 			-- Do some other database type validation... (this is temporary!)
-			if ExM.DatabaseType then
-				if ExM.DatabaseType == "es+esx" then
-					print("[ExtendedMode] [^1ERROR^7] Your database is using the 'es+esx' storage format.\nThis version of ExtendedMode is not yet fully compatible with that storage format.\nYou can try to automatically migrate your database to the correct format using the ^4`migratedb`^0 command directly in your server console.")
+			if ESX.DatabaseType then
+				if ESX.DatabaseType == "es+esx" then
+					print("[gigneMode] [^1ERROR^7] Your database is using the 'es+esx' storage format.\nThis version of gigneMode is not yet fully compatible with that storage format.\nYou can try to automatically migrate your database to the correct format using the ^4`migratedb`^0 command directly in your server console.")
 					error()
-				elseif ExM.DatabaseType == "newesx" then -- redundant check as there are no other database types but oh well, future proofing I guess
-					print(("[ExtendedMode] [^2INFO^7] Your database is using the '%s' storage format, starting..."):format(ExM.DatabaseType))
+				elseif ESX.DatabaseType == "newesx" then -- redundant check as there are no other database types but oh well, future proofing I guess
+					print(("[gigneMode] [^2INFO^7] Your database is using the '%s' storage format, starting..."):format(ESX.DatabaseType))
 				else
-					print(("[ExtendedMode] [^2INFO^7] Your database is using the '%s' storage format, this is ^1not^7 compatible with ExtendedMode!"):format(ExM.DatabaseType))
+					print(("[gigneMode] [^2INFO^7] Your database is using the '%s' storage format, this is ^1not^7 compatible with gigneMode!"):format(ESX.DatabaseType))
 					error()
 				end
 			else
-				print("[ExtendedMode] [^1ERROR^7] An unknown error occured while determining your database storage format!")
+				print("[gigneMode] [^1ERROR^7] An unknown error occured while determining your database storage format!")
 				error()
 			end
 		end
@@ -140,36 +132,49 @@ MySQL.ready(function()
 						if ESX.Jobs[v.job_name] then
 							ESX.Jobs[v.job_name].grades[tostring(v.grade)] = v
 						else
-							print(('[ExtendedMode] [^3WARNING^7] Ignoring job grades for "%s" due to missing job'):format(v.job_name))
+							print(('[gigneMode] [^3WARNING^7] Ignoring job grades for "%s" due to missing job'):format(v.job_name))
 						end
 					end
 		
 					for k2,v2 in pairs(ESX.Jobs) do
 						if ESX.Table.SizeOf(v2.grades) == 0 then
 							ESX.Jobs[v2.name] = nil
-							print(('[ExtendedMode] [^3WARNING^7] Ignoring job "%s" due to no job grades found'):format(v2.name))
+							print(('[gigneMode] [^3WARNING^7] Ignoring job "%s" due to no job grades found'):format(v2.name))
 						end
 					end
 				end)
 			end)
+
+			local oneSyncStatus = GetConvar('onesync', 'default_false')
+
+			if oneSyncStatus ~= 'on' then
+				if oneSyncStatus == 'legacy' then
+					print('[gigneMode] [^3WARNING^7] OneSync is currently set to ^8legacy^7. You are probably using the ' ..
+						'"^4+set onesync_enabled 1^7" command line argument in your server start file. ' ..
+						'Change it to "^4+set onesync on^7". This new OneSync mode fixes hair colour syncing, ' ..
+						'and has better overall performance.')
+				else
+					print('[gigneMode] [^3WARNING^7] OneSync is disabled! Important features such as spawning cars are not going to work!')
+				end
+			end
 	
 			-- Wait for the db sync function to be ready incase it isn't ready yet somehow.
 			if not ESX.StartDBSync or not ESX.StartPayCheck then
-				print('[ExtendedMode] [^2INFO^7] ExtendedMode has been initialized')
+				print('[gigneMode] [^2INFO^7] gigneMode has been initialized')
 				while not ESX.StartDBSync and not ESX.StartPayCheck do
 					Wait(1000)
 				end
 			end
 	
-			ExM.DatabaseReady = true
+			ESX.DatabaseReady = true
 	
 			-- Start DBSync and the paycheck
 			ESX.StartDBSync()
 			ESX.StartPayCheck()
 	
-			print('[ExtendedMode] [^2INFO^7] ExtendedMode has been initialized')
+			print('[gigneMode] [^2INFO^7] gigneMode has been initialized')
 		else
-			print('[ExtendedMode] [^1ERROR^7] ExtendedMode was unable to intialise the database and cannot continue, please see above for more information.')
+			print('[gigneMode] [^1ERROR^7] gigneMode was unable to intialise the database and cannot continue, please see above for more information.')
 		end
 	end)
 end)
@@ -177,7 +182,7 @@ end)
 RegisterServerEvent('esx:clientLog')
 AddEventHandler('esx:clientLog', function(msg)
 	if Config.EnableDebug then
-		print(('[ExtendedMode] [^2TRACE^7] %s^7'):format(msg))
+		print(('[gigneMode] [^2TRACE^7] %s^7'):format(msg))
 	end
 end)
 

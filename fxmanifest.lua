@@ -1,9 +1,9 @@
 fx_version 'bodacious'
 game 'gta5'
-description 'extendedmode'
+description 'gignemode'
 version '1.0.1'
 
-resource_type 'gametype' { name = 'extendedmode' }
+resource_type 'gametype' { name = 'gignemode' }
 
 server_scripts {
 	'server/metrics.lua',
