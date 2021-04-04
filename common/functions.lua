@@ -14,14 +14,12 @@ ESX.GetRandomString = function(length)
 	end
 end
 
-ESX.GetConfig = function()
-	return Config
-end
+ESX.GetConfig = function() return Config end
 
 ESX.GetWeapon = function(weaponName)
 	weaponName = string.upper(weaponName)
 
-	for k,v in ipairs(Config.Weapons) do
+	for k,v in pairs(Config.Weapons) do
 		if v.name == weaponName then
 			return k, v
 		end
@@ -29,21 +27,19 @@ ESX.GetWeapon = function(weaponName)
 end
 
 ESX.GetWeaponFromHash = function(weaponHash)
-	for k,v in ipairs(Config.Weapons) do
+	for k,v in pairs(Config.Weapons) do
 		if GetHashKey(v.name) == weaponHash then
 			return v
 		end
 	end
 end
 
-ESX.GetWeaponList = function()
-	return Config.Weapons
-end
+ESX.GetWeaponList = function() return Config.Weapons end
 
 ESX.GetWeaponLabel = function(weaponName)
 	weaponName = string.upper(weaponName)
 
-	for k,v in ipairs(Config.Weapons) do
+	for k,v in pairs(Config.Weapons) do
 		if v.name == weaponName then
 			return v.label
 		end
@@ -52,16 +48,29 @@ end
 
 ESX.GetWeaponComponent = function(weaponName, weaponComponent)
 	weaponName = string.upper(weaponName)
-	local weapons = Config.Weapons
 
-	for k,v in ipairs(Config.Weapons) do
+	for k,v in pairs(Config.Weapons) do
 		if v.name == weaponName then
-			for k2,v2 in ipairs(v.components) do
+			for k2,v2 in pairs(v.components) do
 				if v2.name == weaponComponent then
 					return v2
 				end
 			end
 		end
+	end
+end
+
+ESX.SecondsToClock = function(seconds)
+	seconds = tonumber(seconds) or 0
+
+	if seconds <= 0 then
+		return 0, 0
+	else
+		local hours = string.format("%02.f", math.floor(seconds / 3600))
+		local mins = string.format("%02.f", math.floor(seconds / 60 - (hours * 60)))
+		local secs = string.format("%02.f", math.floor(seconds - hours * 3600 - mins * 60))
+
+		return mins, secs
 	end
 end
 
@@ -93,8 +102,4 @@ ESX.DumpTable = function(table, nb)
 	else
 		return tostring(table)
 	end
-end
-
-ESX.Round = function(value, numDecimalPlaces)
-	return ESX.Math.Round(value, numDecimalPlaces)
 end

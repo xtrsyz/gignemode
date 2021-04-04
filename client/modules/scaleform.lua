@@ -7,13 +7,64 @@ ESX.Scaleform.ShowFreemodeMessage = function(title, msg, sec)
 	EndScaleformMovieMethod()
 
 	while sec > 0 do
-		Wait(1)
+		Citizen.Wait(1)
 		sec = sec - 0.01
 
 		DrawScaleformMovieFullscreen(scaleform, 255, 255, 255, 255)
 	end
 
 	SetScaleformMovieAsNoLongerNeeded(scaleform)
+end
+
+ESX.Scaleform.PrepareBasicInstructional = function(data, extra, extra2)
+	local scaleform = ESX.Scaleform.Utils.RequestScaleformMovie('instructional_buttons')
+	local count = 0
+
+	BeginScaleformMovieMethod(scaleform, "CLEAR_ALL")
+	EndScaleformMovieMethod()
+
+	BeginScaleformMovieMethod(scaleform, "SET_CLEAR_SPACE")
+	ScaleformMovieMethodAddParamInt(200)
+	EndScaleformMovieMethod()
+
+	for k, v in pairs(data) do
+		count = k
+		BeginScaleformMovieMethod(scaleform, "SET_DATA_SLOT")
+		ScaleformMovieMethodAddParamInt(k)
+		ScaleformMovieMethodAddParamPlayerNameString(GetControlInstructionalButton(2, v.button[1], true))
+
+		if v.button[2] then
+			ScaleformMovieMethodAddParamPlayerNameString(GetControlInstructionalButton(2, v.button[2], true))
+		end
+
+		BeginTextCommandScaleformString("STRING")
+		AddTextComponentSubstringKeyboardDisplay(v.text)
+		EndTextCommandScaleformString()
+
+		EndScaleformMovieMethod()
+	end
+
+	if extra then
+		BeginScaleformMovieMethod(scaleform, "SET_DATA_SLOT")
+		ScaleformMovieMethodAddParamInt(count + 1)
+
+		BeginTextCommandScaleformString("STRING")
+		AddTextComponentSubstringKeyboardDisplay(extra)
+		EndTextCommandScaleformString()
+		EndScaleformMovieMethod()
+	end
+
+	BeginScaleformMovieMethod(scaleform, "DRAW_INSTRUCTIONAL_BUTTONS")
+	EndScaleformMovieMethod()
+
+	BeginScaleformMovieMethod(scaleform, "SET_BACKGROUND_COLOUR")
+	ScaleformMovieMethodAddParamInt(10)
+	ScaleformMovieMethodAddParamInt(10)
+	ScaleformMovieMethodAddParamInt(10)
+	ScaleformMovieMethodAddParamInt(100)
+	EndScaleformMovieMethod()
+
+	return scaleform
 end
 
 ESX.Scaleform.ShowBreakingNews = function(title, msg, bottom, sec)
@@ -38,7 +89,7 @@ ESX.Scaleform.ShowBreakingNews = function(title, msg, bottom, sec)
 	EndScaleformMovieMethod()
 
 	while sec > 0 do
-		Wait(1)
+		Citizen.Wait(1)
 		sec = sec - 0.01
 
 		DrawScaleformMovieFullscreen(scaleform, 255, 255, 255, 255)
@@ -61,7 +112,7 @@ ESX.Scaleform.ShowPopupWarning = function(title, msg, bottom, sec)
 	EndScaleformMovieMethod()
 
 	while sec > 0 do
-		Wait(1)
+		Citizen.Wait(1)
 		sec = sec - 0.01
 
 		DrawScaleformMovieFullscreen(scaleform, 255, 255, 255, 255)
@@ -78,7 +129,7 @@ ESX.Scaleform.ShowTrafficMovie = function(sec)
 	EndScaleformMovieMethod()
 
 	while sec > 0 do
-		Wait(1)
+		Citizen.Wait(1)
 		sec = sec - 0.01
 
 		DrawScaleformMovieFullscreen(scaleform, 255, 255, 255, 255)
@@ -89,10 +140,7 @@ end
 
 ESX.Scaleform.Utils.RequestScaleformMovie = function(movie)
 	local scaleform = RequestScaleformMovie(movie)
-
-	while not HasScaleformMovieLoaded(scaleform) do
-		Wait(0)
-	end
+	while not HasScaleformMovieLoaded(scaleform) do Citizen.Wait(100) end
 
 	return scaleform
 end

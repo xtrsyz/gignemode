@@ -3,17 +3,13 @@ ESX.Table = {}
 -- nil proof alternative to #table
 function ESX.Table.SizeOf(t)
 	local count = 0
-
-	for _,_ in pairs(t) do
-		count = count + 1
-	end
-
+	for _ in pairs(t) do count = count + 1 end
 	return count
 end
 
 function ESX.Table.Set(t)
 	local set = {}
-	for k,v in ipairs(t) do set[v] = true end
+	for k,v in pairs(t) do set[v] = true end
 	return set
 end
 

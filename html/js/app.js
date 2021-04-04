@@ -22,6 +22,7 @@
 	};
 
 	ESX.updateHUDElement = function (name, data) {
+
 		for (let i = 0; i < ESX.HUDElements.length; i++) {
 			if (ESX.HUDElements[i].name == name) {
 				ESX.HUDElements[i].data = data;
@@ -73,6 +74,17 @@
 		});
 	};
 
+	ESX.rightInfoNotification = function (label) {
+
+		let elem = $('<div>' + label + '</div>');
+
+		$('#inventory_notifications').append(elem);
+
+		$(elem).delay(3000).fadeOut(1000, function () {
+			elem.remove();
+		});
+	};
+
 	window.onData = (data) => {
 		switch (data.action) {
 			case 'setHUDDisplay': {
@@ -97,6 +109,12 @@
 
 			case 'inventoryNotification': {
 				ESX.inventoryNotification(data.add, data.item, data.count);
+				break;
+			}
+
+			case 'rightInfoNotification': {
+				ESX.rightInfoNotification(data.label);
+				break
 			}
 		}
 	};

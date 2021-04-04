@@ -7,7 +7,7 @@ function handleVersion(metricHandled)
             data = json.decode(data)
             
             if (data.updated == false) then
-                print(string.format('[ExtendedMode] [^3WARNING^7] Outdated version detected!\nNew version: ^2%s^7\nReleased: %s\nDownload: %s\nChangelog:\n%s', data.latestVersion, data.released, data.download, data.changelog))
+                print(string.format('[gigneMode] [^3WARNING^7] Outdated version detected!\nNew version: ^2%s^7\nReleased: %s\nDownload: %s\nChangelog:\n%s', data.latestVersion, data.released, data.download, data.changelog))
             end
 
             if uuid == "unknown" then

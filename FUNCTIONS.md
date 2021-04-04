@@ -1,9 +1,9 @@
-# extendedmode functions
-Functions exclusive to the extendedmode framework
+# gignemode functions
+Functions exclusive to the gignemode framework
 
-## ExM.Game.PlayAnim
+## ESX.Game.PlayAnim
 ```lua
-ExM.Game.PlayAnim(animDict, animName, upperbodyOnly, duration)
+ESX.Game.PlayAnim(animDict, animName, upperbodyOnly, duration)
 ```
 
 This function is a quick and easy way to play any animation you want without having to request animation dictionaries or specify a heap of parameters.
@@ -17,12 +17,12 @@ This function is a quick and easy way to play any animation you want without hav
 
 ### Example
 ```lua
-ExM.Game.PlayAnim("mini@sprunk", "plyr_buy_drink_pt1", false, 1500)
+ESX.Game.PlayAnim("mini@sprunk", "plyr_buy_drink_pt1", false, 1500)
 ```
 
-## ExM.Game.CreatePed
+## ESX.Game.CreatePed
 ```lua
-ExM.Game.CreatePed(pedModel, pedCoords, isNetworked, pedType)
+ESX.Game.CreatePed(pedModel, pedCoords, isNetworked, pedType)
 ```
 
 This function is a quick and easy way to create a ped without having to request models or anything, you can choose whether or not to store the ped in a variable or not.
@@ -37,5 +37,5 @@ This function is a quick and easy way to create a ped without having to request 
 ### Example
 ```lua
 local coords = GetEntityCoords(PlayerPedId())
-local ped = ExM.Game.CreatePed(`a_m_m_acult_01`, vec4(coords.xyz, 180.0), true, 27)
+local ped = ESX.Game.CreatePed(`a_m_m_acult_01`, vec4(coords.xyz, 180.0), true, 27)
 ```

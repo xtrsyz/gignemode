@@ -1,4 +1,4 @@
-ESX.RegisterCommand('setcoords', 'admin', function(xPlayer, args, showError)
+ESX.RegisterCommand('setcoords', 'staff_level_2', function(xPlayer, args, showError)
 	xPlayer.setCoords({x = args.x, y = args.y, z = args.z})
 end, false, {help = _U('command_setcoords'), validate = true, arguments = {
 	{name = 'x', help = _U('command_setcoords_x'), type = 'number'},
@@ -6,7 +6,7 @@ end, false, {help = _U('command_setcoords'), validate = true, arguments = {
 	{name = 'z', help = _U('command_setcoords_z'), type = 'number'}
 }})
 
-ESX.RegisterCommand('setjob', 'admin', function(xPlayer, args, showError)
+ESX.RegisterCommand('setjob', 'staff_level_5', function(xPlayer, args, showError)
 	if ESX.DoesJobExist(args.job, args.grade) then
 		args.playerId.setJob(args.job, args.grade)
 	else
@@ -18,21 +18,21 @@ end, true, {help = _U('command_setjob'), validate = true, arguments = {
 	{name = 'grade', help = _U('command_setjob_grade'), type = 'number'}
 }})
 
-ESX.RegisterCommand('car', 'admin', function(xPlayer, args, showError)
+ESX.RegisterCommand('car', 'staff_level_4', function(xPlayer, args, showError)
 	xPlayer.triggerEvent('esx:spawnVehicle', args.car)
 end, false, {help = _U('command_car'), validate = false, arguments = {
 	{name = 'car', help = _U('command_car_car'), type = 'any'}
 }})
 
-ESX.RegisterCommand({'cardel', 'dv'}, 'admin', function(xPlayer, args, showError)
+ESX.RegisterCommand({'cardel', 'dv'}, 'staff_level_2', function(xPlayer, args, showError)
 	xPlayer.triggerEvent('esx:deleteVehicle', args.radius)
 end, false, {help = _U('command_cardel'), validate = false, arguments = {
 	{name = 'radius', help = _U('command_cardel_radius'), type = 'any'}
 }})
 
-ESX.RegisterCommand('setaccountmoney', 'admin', function(xPlayer, args, showError)
+ESX.RegisterCommand('setaccountmoney', 'staff_level_5', function(xPlayer, args, showError)
 	if args.playerId.getAccount(args.account) then
-		args.playerId.setAccountMoney(args.account, args.amount)
+		args.playerId.setAccountMoney(args.account, args.amount, 'setaccountmoney:'..xPlayer.identifier)
 	else
 		showError(_U('command_giveaccountmoney_invalid'))
 	end
@@ -42,9 +42,9 @@ end, true, {help = _U('command_setaccountmoney'), validate = true, arguments = {
 	{name = 'amount', help = _U('command_setaccountmoney_amount'), type = 'number'}
 }})
 
-ESX.RegisterCommand('giveaccountmoney', 'admin', function(xPlayer, args, showError)
+ESX.RegisterCommand('giveaccountmoney', 'staff_level_5', function(xPlayer, args, showError)
 	if args.playerId.getAccount(args.account) then
-		args.playerId.addAccountMoney(args.account, args.amount)
+		args.playerId.addAccountMoney(args.account, args.amount, 'giveaccountmoney:'..xPlayer.identifier)
 	else
 		showError(_U('command_giveaccountmoney_invalid'))
 	end
@@ -54,7 +54,7 @@ end, true, {help = _U('command_giveaccountmoney'), validate = true, arguments = 
 	{name = 'amount', help = _U('command_giveaccountmoney_amount'), type = 'number'}
 }})
 
-ESX.RegisterCommand('giveitem', 'admin', function(xPlayer, args, showError)
+ESX.RegisterCommand('giveitem', 'staff_level_4', function(xPlayer, args, showError)
 	args.playerId.addInventoryItem(args.item, args.count)
 end, true, {help = _U('command_giveitem'), validate = true, arguments = {
 	{name = 'playerId', help = _U('commandgeneric_playerid'), type = 'player'},
@@ -62,7 +62,7 @@ end, true, {help = _U('command_giveitem'), validate = true, arguments = {
 	{name = 'count', help = _U('command_giveitem_count'), type = 'number'}
 }})
 
-ESX.RegisterCommand('giveweapon', 'admin', function(xPlayer, args, showError)
+ESX.RegisterCommand('giveweapon', 'staff_level_4', function(xPlayer, args, showError)
 	if args.playerId.hasWeapon(args.weapon) then
 		showError(_U('command_giveweapon_hasalready'))
 	else
@@ -74,7 +74,15 @@ end, true, {help = _U('command_giveweapon'), validate = true, arguments = {
 	{name = 'ammo', help = _U('command_giveweapon_ammo'), type = 'number'}
 }})
 
-ESX.RegisterCommand('giveweaponcomponent', 'admin', function(xPlayer, args, showError)
+ESX.RegisterCommand('giveammo', 'staff_level_4', function(xPlayer, args, showError)
+	xPlayer.addWeaponAmmo(args.ammoType, args.amount)
+end, true, {help = _U('command_giveweapon'), validate = true, arguments = {
+	{name = 'playerId', help = _U('commandgeneric_playerid'), type = 'player'},
+	{name = 'weapon', help = _U('command_giveweapon_weapon'), type = 'weapon'},
+	{name = 'amount', help = _U('command_giveweapon_ammo'), type = 'number'}
+}})
+
+ESX.RegisterCommand('giveweaponcomponent', 'staff_level_4', function(xPlayer, args, showError)
 	if args.playerId.hasWeapon(args.weaponName) then
 		local component = ESX.GetWeaponComponent(args.weaponName, args.componentName)
 
@@ -100,12 +108,12 @@ ESX.RegisterCommand({'clear', 'cls'}, 'user', function(xPlayer, args, showError)
 	xPlayer.triggerEvent('chat:clear')
 end, false, {help = _U('command_clear')})
 
-ESX.RegisterCommand({'clearall', 'clsall'}, 'admin', function(xPlayer, args, showError)
+ESX.RegisterCommand({'clearall', 'clsall'}, 'staff_level_1', function(xPlayer, args, showError)
 	TriggerClientEvent('chat:clear', -1)
 end, false, {help = _U('command_clearall')})
 
-ESX.RegisterCommand('clearinventory', 'admin', function(xPlayer, args, showError)
-	for k,v in ipairs(args.playerId.inventory) do
+ESX.RegisterCommand('clearinventory', 'staff_level_2', function(xPlayer, args, showError)
+	for k,v in pairs(args.playerId.inventory) do
 		if v.count > 0 then
 			args.playerId.setInventoryItem(v.name, 0)
 		end
@@ -114,41 +122,68 @@ end, true, {help = _U('command_clearinventory'), validate = true, arguments = {
 	{name = 'playerId', help = _U('commandgeneric_playerid'), type = 'player'}
 }})
 
-ESX.RegisterCommand('clearloadout', 'admin', function(xPlayer, args, showError)
-	for k,v in ipairs(args.playerId.loadout) do
+ESX.RegisterCommand('clearloadout', 'staff_level_2', function(xPlayer, args, showError)
+	for k,v in pairs(args.playerId.loadout) do
 		args.playerId.removeWeapon(v.name)
 	end
 end, true, {help = _U('command_clearloadout'), validate = true, arguments = {
 	{name = 'playerId', help = _U('commandgeneric_playerid'), type = 'player'}
 }})
 
-ESX.RegisterCommand('setgroup', 'admin', function(xPlayer, args, showError)
-	args.playerId.setGroup(args.group)
-end, true, {help = _U('command_setgroup'), validate = true, arguments = {
-	{name = 'playerId', help = _U('commandgeneric_playerid'), type = 'player'},
-	{name = 'group', help = _U('command_setgroup_group'), type = 'string'},
+ESX.RegisterCommand('clearammo', 'staff_level_2', function(xPlayer, args, showError)
+	for k,v in pairs(xPlayer.getAmmo()) do
+		if v.count > 0 then
+			args.playerId.removeWeaponAmmo(k)
+		end
+	end
+end, true, {help = _U('command_clearammo'), validate = true, arguments = {
+	{name = 'playerId', help = _U('commandgeneric_playerid'), type = 'player'}
 }})
 
-ESX.RegisterCommand('save', 'admin', function(xPlayer, args, showError)
-	print(('[ExtendedMode] [^2INFO^7] Manual player data save triggered for "%s"'):format(args.playerId.name))
-	ESX.SavePlayer(args.playerId, function(rowsChanged)
-		if rowsChanged ~= 0 then
-			print(('[ExtendedMode] [^2INFO^7] Saved player data for "%s"'):format(args.playerId.name))
+ESX.RegisterCommand('groupadd', 'dev_level_2', function(xPlayer, args, showError)
+	if args.playerId.addGroup(args.group) then
+		showError('Adding player to group was successful')
+	else
+		showError('Failed adding player to group, is the player already in that group?')
+	end
+end, true, {help = 'Add a player to a group', validate = true, arguments = {
+	{name = 'playerId', help = _U('commandgeneric_playerid'), type = 'player'},
+	{name = 'group', help = _U('command_setgroup_group'), type = 'string'}
+}})
+
+ESX.RegisterCommand('groupremove', 'dev_level_2', function(xPlayer, args, showError)
+	if args.playerId.removeGroup(args.group) then
+		showError('Removing player from group was successful')
+	else
+		showError('Failed removing player from a group, is the player in that group?')
+	end
+end, true, {help = 'Remove a player from a group', validate = true, arguments = {
+	{name = 'playerId', help = _U('commandgeneric_playerid'), type = 'player'},
+	{name = 'group', help = _U('command_setgroup_group'), type = 'string'}
+}})
+
+ESX.RegisterCommand('grouplist', {'staff_level_5', 'dev_level_2'}, function(xPlayer, args, showError)
+	local groups
+
+	for group,v in pairs(args.playerId.getGroups()) do
+		if groups then
+			groups = ('%s, %s'):format(groups, group)
 		else
-			print(('[ExtendedMode] [^3WARNING^7] Failed to save player data for "%s"! This may be caused by an internal error on the MySQL server.'):format(args.playerId.name))
+			groups = group
 		end
-	end)
+	end
+
+	showError(('Player groups: %s'):format(groups))
+end, true, {help = 'List the groups a player is in', validate = true, arguments = {
+	{name = 'playerId', help = _U('commandgeneric_playerid'), type = 'player'}
+}})
+
+ESX.RegisterCommand('save', 'staff_level_1', function(xPlayer, args, showError)
+	ESX.SavePlayer(args.playerId)
 end, true, {help = _U('command_save'), validate = true, arguments = {
 	{name = 'playerId', help = _U('commandgeneric_playerid'), type = 'player'}
 }})
 
-ESX.RegisterCommand('saveall', 'admin', function(xPlayer, args, showError)
-	print('[ExtendedMode] [^2INFO^7] Manual player data save triggered')
-	ESX.SavePlayers(function(result)
-		if result then
-			print('[ExtendedMode] [^2INFO^7] Saved all player data')
-		else
-			print('[ExtendedMode] [^3WARNING^7] Failed to save player data! This may be caused by an internal error on the MySQL server.')
-		end
-	end)
+ESX.RegisterCommand('saveall', 'staff_level_1', function(xPlayer, args, showError)
+	ESX.SavePlayers()
 end, true, {help = _U('command_saveall')})
