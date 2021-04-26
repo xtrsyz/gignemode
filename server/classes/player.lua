@@ -371,7 +371,7 @@ function CreateESXPlayer(userData)
 					if batchCount > 0 then
 						item.batch[batchNumber].count = batchCount
 					else
-						item.batch[batchNumber] = nil
+						item.batch[batchNumber] = false
 					end
 					item.batchCount = item.batchCount - count
 				end
