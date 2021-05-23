@@ -552,8 +552,10 @@ function CreateESXPlayer(userData)
 			})
 
 			self.triggerEvent('esx:addWeapon', weaponName, ammo)
-			self.showInventoryItemNotification(weaponLabel, true)
+			self.triggerEvent('esx:addInventoryItem', weaponLabel, false, true)
 		else
+			itemInfo.weapon = weaponName
+			itemInfo.count = ammo
 			self.addInventoryItem(weaponName, ammo, itemInfo)
 		end
 	end
