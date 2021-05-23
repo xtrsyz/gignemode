@@ -1061,13 +1061,13 @@ function spawnPlayer(spawnIdx, cb)
             spawn = Config.FirstSpawnCoords
         end
 
-        -- if not spawn.skipFade then
-            -- DoScreenFadeOut(500)
+        if not spawn.skipFade then
+            DoScreenFadeOut(500)
 
-            -- while not IsScreenFadedOut() do
-                -- Citizen.Wait(0)
-            -- end
-        -- end
+            while not IsScreenFadedOut() do
+                Citizen.Wait(0)
+            end
+        end
 
         -- validate the index
         if not spawn then
@@ -1077,6 +1077,12 @@ function spawnPlayer(spawnIdx, cb)
 
             return
         end
+
+        -- prevent errors when passing spawn table
+            spawn.x = spawn.x + 0.00
+            spawn.y = spawn.y + 0.00
+            spawn.z = spawn.z + 0.00
+            spawn.heading = spawn.heading and (spawn.heading + 0.00) or 0
 
         -- freeze the local player
         freezePlayer(PlayerId(), true)
